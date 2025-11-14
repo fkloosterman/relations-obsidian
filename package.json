@@ -1,0 +1,16 @@
+{
+  "name": "relations-obsidian",
+  "version": "0.0.1",
+  "description": "Obsidian plugin for visualizing parent-child note relationships.",
+  "main": "main.js",
+  "scripts": {
+    "dev": "rollup -c -w",
+    "build": "rollup -c"
+  },
+  "devDependencies": {
+    "obsidian": "latest",
+    "rollup": "^3.0.0",
+    "rollup-plugin-typescript2": "^0.31.1",
+    "typescript": "^5.0.0"
+  }
+}

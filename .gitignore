@@ -1,0 +1,28 @@
+# Node modules
+node_modules/
+
+# Build output
+main.js
+*.js.map
+
+# Dependency lock files (optional - uncomment if you want to track it)
+package-lock.json
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment files
+.env
+.env.local

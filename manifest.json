@@ -1,0 +1,10 @@
+{
+  "id": "relations-obsidian",
+  "name": "Relation Explorer",
+  "version": "0.0.1",
+  "minAppVersion": "1.0.0",
+  "description": "Visualize parent/child relationships between notes based on user-defined frontmatter fields.",
+  "author": "Fabian Kloosterman",
+  "authorUrl": "https://github.com/fkloosterman",
+  "isDesktopOnly": false
+}

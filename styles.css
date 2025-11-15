@@ -211,7 +211,7 @@
 	overflow-y: auto;
 	overflow-x: hidden;
 	padding: 8px;
-	pointer-events: none;
+	pointer-events: auto;
 }
 
 /* Empty State */
@@ -373,6 +373,7 @@
   cursor: pointer;
   user-select: none;
   transition: background-color 0.15s ease;
+  pointer-events: auto;
 }
 
 .relation-section-header:hover {
@@ -453,6 +454,7 @@
   padding: 6px 8px;
   border-radius: 4px;
   transition: background-color 0.1s ease;
+  pointer-events: auto;
 }
 
 .relation-sibling-item:hover {
@@ -479,6 +481,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  pointer-events: auto;
 }
 
 .relation-sibling-name:hover {

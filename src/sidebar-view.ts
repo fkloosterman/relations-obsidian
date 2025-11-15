@@ -151,7 +151,9 @@ export class RelationSidebarView extends ItemView {
 		// Update when active file changes
 		this.registerEvent(
 			this.app.workspace.on('active-leaf-change', () => {
-				if (!this.viewState.pinned) {
+				// Check if pinned for the current field
+				const isPinnedToCurrentField = !!this.viewState.pinnedFiles[this.viewState.selectedParentField];
+				if (!isPinnedToCurrentField) {
 					const newActiveFile = this.app.workspace.getActiveFile();
 					if (!this.currentFile || !newActiveFile || this.currentFile.path !== newActiveFile.path) {
 						this.updateView();
@@ -181,10 +183,12 @@ export class RelationSidebarView extends ItemView {
 						this.currentFile = file;
 					}
 
-					// Update if pinned file was renamed
-					if (this.viewState.pinned && oldPath === this.viewState.pinnedFilePath) {
-						console.log('[Relation Sidebar] Updating pinned file path');
-						this.viewState.pinnedFilePath = file.path;
+					// Update if pinned file was renamed (for any field)
+					for (const [fieldName, pinnedPath] of Object.entries(this.viewState.pinnedFiles)) {
+						if (pinnedPath === oldPath) {
+							console.log('[Relation Sidebar] Updating pinned file path for field', fieldName);
+							this.viewState.pinnedFiles[fieldName] = file.path;
+						}
 					}
 
 					// Always refresh the view since the renamed file might appear in the tree
@@ -204,11 +208,12 @@ export class RelationSidebarView extends ItemView {
 						this.updateView();
 					}
 
-					// Unpin if pinned file is deleted
-					if (this.viewState.pinned && file.path === this.viewState.pinnedFilePath) {
-						this.viewState.pinned = false;
-						this.viewState.pinnedFilePath = undefined;
-						this.updateView();
+					// Unpin if pinned file is deleted (for any field)
+					for (const [fieldName, pinnedPath] of Object.entries(this.viewState.pinnedFiles)) {
+						if (pinnedPath === file.path) {
+							delete this.viewState.pinnedFiles[fieldName];
+							this.updateView();
+						}
 					}
 				}
 			})
@@ -243,17 +248,15 @@ export class RelationSidebarView extends ItemView {
 	 * Gets the file to display based on view state.
 	 */
 	private getFileToDisplay(): TFile | null {
-		// If pinned, use pinned file
-		if (this.viewState.pinned && this.viewState.pinnedFilePath) {
-			const pinnedFile = this.app.vault.getAbstractFileByPath(
-				this.viewState.pinnedFilePath
-			);
+		// If pinned for current field, use pinned file
+		const pinnedPath = this.viewState.pinnedFiles[this.viewState.selectedParentField];
+		if (pinnedPath) {
+			const pinnedFile = this.app.vault.getAbstractFileByPath(pinnedPath);
 			if (pinnedFile instanceof TFile) {
 				return pinnedFile;
 			}
 			// Pinned file not found, unpin
-			this.viewState.pinned = false;
-			this.viewState.pinnedFilePath = undefined;
+			delete this.viewState.pinnedFiles[this.viewState.selectedParentField];
 		}
 
 		// Otherwise, use active file
@@ -419,36 +422,36 @@ export class RelationSidebarView extends ItemView {
 
 	/**
 	 * Sets the display mode.
+	 * @deprecated Multi-field architecture uses parent field selection instead
 	 */
 	setMode(mode: SidebarDisplayMode): void {
-		this.viewState.mode = mode;
+		// This method is kept for backward compatibility but is no longer used
+		// in the multi-field architecture
 		this.updateView();
 	}
 
 	/**
-	 * Pins the view to the current file.
+	 * Pins the view to the current file for the current parent field.
 	 */
 	pin(): void {
 		if (this.currentFile) {
-			this.viewState.pinned = true;
-			this.viewState.pinnedFilePath = this.currentFile.path;
+			this.viewState.pinnedFiles[this.viewState.selectedParentField] = this.currentFile.path;
 			this.updateView();
 		}
 	}
 
 	/**
-	 * Unpins the view.
+	 * Unpins the view for the current parent field.
 	 */
 	unpin(): void {
-		this.viewState.pinned = false;
-		this.viewState.pinnedFilePath = undefined;
+		delete this.viewState.pinnedFiles[this.viewState.selectedParentField];
 		this.updateView();
 	}
 
 	/**
-	 * Checks if the view is currently pinned.
+	 * Checks if the view is currently pinned for the current parent field.
 	 */
 	isPinned(): boolean {
-		return this.viewState.pinned;
+		return !!this.viewState.pinnedFiles[this.viewState.selectedParentField];
 	}
 }

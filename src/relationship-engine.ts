@@ -213,4 +213,144 @@ export class RelationshipEngine {
 
     return siblings;
   }
+
+  /**
+   * Gets cousins of a file at the specified degree.
+   *
+   * Cousins are notes that share a common ancestor at generation (degree + 1),
+   * but do not share parents (i.e., are not siblings). This method excludes
+   * both siblings and the queried file itself from results.
+   *
+   * @param file - The file to get cousins for
+   * @param degree - Cousin degree (1 = first cousins, 2 = second cousins, etc.). Default: 1
+   * @returns Array of cousin files (may be empty if no cousins exist)
+   *
+   * @example
+   * // Given:
+   * //     GP
+   * //    /  \
+   * //   P1   P2
+   * //   |    |
+   * //   A    B
+   * // getCousins(A, 1) returns: [B]
+   * // A and B are first cousins (share grandparent GP)
+   *
+   * @example
+   * // Given:
+   * //       GGP
+   * //      /   \
+   * //    GP1   GP2
+   * //     |     |
+   * //    P1    P2
+   * //     |     |
+   * //     A     B
+   * // getCousins(A, 2) returns: [B]
+   * // A and B are second cousins (share great-grandparent GGP)
+   *
+   * @example
+   * // Given: A has no ancestors at generation 2 (no grandparents)
+   * // getCousins(A, 1) returns: []
+   * // Cannot have first cousins without grandparents
+   *
+   * @example
+   * // Given:
+   * //      GP
+   * //     /  \
+   * //    P1  P2
+   * //   / \   \
+   * //  A   B   C
+   * // getCousins(A, 1) returns: [C]
+   * // B is excluded because B is a sibling (shares parent P1)
+   * // C is included because C shares grandparent GP but not parent P1
+   */
+  getCousins(file: TFile, degree: number = 1): TFile[] {
+    // Validate degree (must be at least 1)
+    if (degree < 1) {
+      return [];
+    }
+
+    // Get ancestors at generation (degree + 1)
+    // These are the "shared ancestors" for cousins of this degree
+    // For first cousins (degree 1), we need grandparents (generation 2)
+    // For second cousins (degree 2), we need great-grandparents (generation 3)
+    const ancestorGenerations = this.getAncestors(file, degree + 1);
+
+    // If we don't have ancestors at the required generation, no cousins exist
+    if (ancestorGenerations.length < degree + 1) {
+      return [];
+    }
+
+    // Get all ancestors at closer generations (to exclude closer cousins)
+    // For second cousins, this would be ancestors at generations 1-2 (parents and grandparents)
+    const closerAncestors = new Set<string>();
+    for (let i = 0; i < degree; i++) {
+      if (ancestorGenerations.length > i) {
+        for (const ancestor of ancestorGenerations[i]) {
+          closerAncestors.add(ancestor.path);
+        }
+      }
+    }
+
+    // Get the specific generation we need (index is degree because arrays are 0-indexed)
+    // For first cousins (degree 1), we need generation 2 (index 1)
+    // For second cousins (degree 2), we need generation 3 (index 2)
+    const sharedAncestors = ancestorGenerations[degree];
+
+    // Collect all descendants at generation (degree + 1) from each shared ancestor
+    const cousinCandidates = new Set<string>();
+
+    for (const ancestor of sharedAncestors) {
+      const descendantGenerations = this.getDescendants(ancestor, degree + 1);
+
+      // Get descendants at generation (degree + 1)
+      if (descendantGenerations.length >= degree + 1) {
+        const descendantsAtLevel = descendantGenerations[degree];
+
+        for (const descendant of descendantsAtLevel) {
+          cousinCandidates.add(descendant.path);
+        }
+      }
+    }
+
+    // Get siblings to exclude them
+    const siblings = this.getSiblings(file, false); // Don't include self
+    const siblingPaths = new Set(siblings.map(s => s.path));
+
+    // Filter out self, siblings, and closer cousins
+    const cousins: TFile[] = [];
+
+    for (const candidatePath of cousinCandidates) {
+      // Skip self
+      if (candidatePath === file.path) continue;
+
+      // Skip siblings
+      if (siblingPaths.has(candidatePath)) continue;
+
+      // Skip if this person shares a closer ancestor
+      // (i.e., they're a closer degree cousin or closer relative)
+      const candidateFile = this.graph.getFileByPath(candidatePath);
+      if (!candidateFile) continue;
+
+      // Check if candidate shares any ancestor at closer generations
+      const candidateAncestors = this.getAncestors(candidateFile, degree);
+      let sharesCloserAncestor = false;
+
+      for (let i = 0; i < candidateAncestors.length; i++) {
+        for (const ancestor of candidateAncestors[i]) {
+          if (closerAncestors.has(ancestor.path)) {
+            sharesCloserAncestor = true;
+            break;
+          }
+        }
+        if (sharesCloserAncestor) break;
+      }
+
+      // Skip if they share a closer ancestor
+      if (sharesCloserAncestor) continue;
+
+      cousins.push(candidateFile);
+    }
+
+    return cousins;
+  }
 }

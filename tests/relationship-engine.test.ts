@@ -1789,3 +1789,820 @@ describe('RelationshipEngine - getSiblings', () => {
     });
   });
 });
+
+/**
+ * Helper to create first cousin structure:
+ *      GP
+ *     /  \
+ *    P1   P2
+ *    |    |
+ *    A    B
+ */
+function createFirstCousinStructure(): {
+  graph: RelationGraph;
+  files: { GP: TFile; P1: TFile; P2: TFile; A: TFile; B: TFile };
+} {
+  const edges: [string, string][] = [
+    ['A', 'P1'],
+    ['B', 'P2'],
+    ['P1', 'GP'],
+    ['P2', 'GP']
+  ];
+
+  const graph = createMockGraph(edges);
+  const graphInternal = (graph as any).graph;
+
+  return {
+    graph,
+    files: {
+      GP: graphInternal.get('GP')!.file,
+      P1: graphInternal.get('P1')!.file,
+      P2: graphInternal.get('P2')!.file,
+      A: graphInternal.get('A')!.file,
+      B: graphInternal.get('B')!.file
+    }
+  };
+}
+
+/**
+ * Helper to create second cousin structure:
+ *         GGP
+ *        /   \
+ *      GP1   GP2
+ *       |     |
+ *      P1    P2
+ *       |     |
+ *       A     B
+ */
+function createSecondCousinStructure(): {
+  graph: RelationGraph;
+  files: { GGP: TFile; GP1: TFile; GP2: TFile; P1: TFile; P2: TFile; A: TFile; B: TFile };
+} {
+  const edges: [string, string][] = [
+    ['A', 'P1'],
+    ['P1', 'GP1'],
+    ['GP1', 'GGP'],
+    ['B', 'P2'],
+    ['P2', 'GP2'],
+    ['GP2', 'GGP']
+  ];
+
+  const graph = createMockGraph(edges);
+  const graphInternal = (graph as any).graph;
+
+  return {
+    graph,
+    files: {
+      GGP: graphInternal.get('GGP')!.file,
+      GP1: graphInternal.get('GP1')!.file,
+      GP2: graphInternal.get('GP2')!.file,
+      P1: graphInternal.get('P1')!.file,
+      P2: graphInternal.get('P2')!.file,
+      A: graphInternal.get('A')!.file,
+      B: graphInternal.get('B')!.file
+    }
+  };
+}
+
+/**
+ * Helper to create complex family tree with siblings and cousins:
+ *       GP
+ *      /  \
+ *     P1  P2
+ *    / \   \
+ *   A   B   C
+ */
+function createFamilyWithSiblingsAndCousins(): {
+  graph: RelationGraph;
+  files: { GP: TFile; P1: TFile; P2: TFile; A: TFile; B: TFile; C: TFile };
+} {
+  const edges: [string, string][] = [
+    ['A', 'P1'],
+    ['B', 'P1'],
+    ['C', 'P2'],
+    ['P1', 'GP'],
+    ['P2', 'GP']
+  ];
+
+  const graph = createMockGraph(edges);
+  const graphInternal = (graph as any).graph;
+
+  return {
+    graph,
+    files: {
+      GP: graphInternal.get('GP')!.file,
+      P1: graphInternal.get('P1')!.file,
+      P2: graphInternal.get('P2')!.file,
+      A: graphInternal.get('A')!.file,
+      B: graphInternal.get('B')!.file,
+      C: graphInternal.get('C')!.file
+    }
+  };
+}
+
+describe('RelationshipEngine - getCousins', () => {
+  describe('First Cousins (degree 1)', () => {
+    it('should return first cousins sharing one grandparent', () => {
+      // Setup:
+      //      GP
+      //     /  \
+      //    P1   P2
+      //    |    |
+      //    A    B
+      const { graph, files } = createFirstCousinStructure();
+      const engine = new RelationshipEngine(graph);
+
+      const cousins = engine.getCousins(files.A, 1);
+
+      // Expect: [B]
+      // A and B are first cousins (share grandparent GP)
+      expect(cousins).toHaveLength(1);
+      expect(cousins[0].basename).toBe('B');
+    });
+
+    it('should be symmetric: if A is cousin of B, B is cousin of A', () => {
+      // Setup: First cousin structure
+      const { graph, files } = createFirstCousinStructure();
+      const engine = new RelationshipEngine(graph);
+
+      const cousinsOfA = engine.getCousins(files.A, 1);
+      const cousinsOfB = engine.getCousins(files.B, 1);
+
+      // A's cousins should include B
+      expect(cousinsOfA.some(f => f.basename === 'B')).toBe(true);
+
+      // B's cousins should include A
+      expect(cousinsOfB.some(f => f.basename === 'A')).toBe(true);
+    });
+
+    it('should handle multiple cousins from one grandparent', () => {
+      // Setup:
+      //         GP
+      //      / / \ \
+      //     P1 P2 P3 P4
+      //     |  |  |  |
+      //     A  B  C  D
+      const graph = createMockGraph([
+        ['A', 'P1'],
+        ['B', 'P2'],
+        ['C', 'P3'],
+        ['D', 'P4'],
+        ['P1', 'GP'],
+        ['P2', 'GP'],
+        ['P3', 'GP'],
+        ['P4', 'GP']
+      ]);
+      const engine = new RelationshipEngine(graph);
+      const fileA = (graph as any).graph.get('A')!.file;
+
+      const cousins = engine.getCousins(fileA, 1);
+
+      // Expect: [B, C, D]
+      // All share GP but have different parents
+      expect(cousins).toHaveLength(3);
+      const names = cousins.map(f => f.basename).sort();
+      expect(names).toEqual(['B', 'C', 'D']);
+    });
+
+    it('should exclude siblings from cousin results', () => {
+      // Setup:
+      //        GP
+      //       /  \
+      //      P1   P2
+      //     / \   |
+      //    A   B  C
+      const { graph, files } = createFamilyWithSiblingsAndCousins();
+      const engine = new RelationshipEngine(graph);
+
+      const cousins = engine.getCousins(files.A, 1);
+
+      // Expect: [C]
+      // B is excluded (sibling, shares parent P1)
+      // C is included (cousin, shares GP but not P1)
+      expect(cousins).toHaveLength(1);
+      expect(cousins[0].basename).toBe('C');
+    });
+
+    it('should exclude self from cousin results', () => {
+      // Setup: First cousin structure
+      const { graph, files } = createFirstCousinStructure();
+      const engine = new RelationshipEngine(graph);
+
+      const cousins = engine.getCousins(files.A, 1);
+
+      // Expect: [B]
+      // A is not in results (self-exclusion)
+      expect(cousins.some(f => f.basename === 'A')).toBe(false);
+    });
+
+    it('should return empty array when no grandparents exist', () => {
+      // Setup: A → P (only one generation)
+      const graph = createMockGraph([['A', 'P']]);
+      const engine = new RelationshipEngine(graph);
+      const fileA = (graph as any).graph.get('A')!.file;
+
+      const cousins = engine.getCousins(fileA, 1);
+
+      // Expect: []
+      // Cannot have cousins without grandparents
+      expect(cousins).toHaveLength(0);
+    });
+
+    it('should return empty array when grandparents have no other grandchildren', () => {
+      // Setup:
+      //      GP
+      //      |
+      //      P
+      //      |
+      //      A
+      const graph = createMockGraph([
+        ['A', 'P'],
+        ['P', 'GP']
+      ]);
+      const engine = new RelationshipEngine(graph);
+      const fileA = (graph as any).graph.get('A')!.file;
+
+      const cousins = engine.getCousins(fileA, 1);
+
+      // Expect: []
+      // A is the only grandchild
+      expect(cousins).toHaveLength(0);
+    });
+
+    it('should use default degree 1 when degree not specified', () => {
+      // Setup: First cousin structure
+      const { graph, files } = createFirstCousinStructure();
+      const engine = new RelationshipEngine(graph);
+
+      const cousins = engine.getCousins(files.A); // No degree specified
+
+      // Expect: [B] (first cousins by default)
+      expect(cousins).toHaveLength(1);
+      expect(cousins[0].basename).toBe('B');
+    });
+  });
+
+  describe('Second Cousins (degree 2)', () => {
+    it('should return second cousins sharing great-grandparent', () => {
+      // Setup:
+      //         GGP
+      //        /   \
+      //      GP1   GP2
+      //       |     |
+      //      P1    P2
+      //       |     |
+      //       A     B
+      const { graph, files } = createSecondCousinStructure();
+      const engine = new RelationshipEngine(graph);
+
+      const cousins = engine.getCousins(files.A, 2);
+
+      // Expect: [B]
+      // A and B are second cousins
+      expect(cousins).toHaveLength(1);
+      expect(cousins[0].basename).toBe('B');
+    });
+
+    it('should not include first cousins in second cousin results', () => {
+      // Setup:
+      //           GGP
+      //          /   \
+      //        GP1   GP2
+      //       / \     |
+      //      P1  P2  P3
+      //      |   |   |
+      //      A   B   C
+      const graph = createMockGraph([
+        ['A', 'P1'],
+        ['B', 'P2'],
+        ['C', 'P3'],
+        ['P1', 'GP1'],
+        ['P2', 'GP1'],
+        ['P3', 'GP2'],
+        ['GP1', 'GGP'],
+        ['GP2', 'GGP']
+      ]);
+      const engine = new RelationshipEngine(graph);
+      const fileA = (graph as any).graph.get('A')!.file;
+
+      const secondCousins = engine.getCousins(fileA, 2);
+      const firstCousins = engine.getCousins(fileA, 1);
+
+      // Expect first cousins: [B] (shares GP1)
+      expect(firstCousins).toHaveLength(1);
+      expect(firstCousins[0].basename).toBe('B');
+
+      // Expect second cousins: [C] (shares GGP but not GP1)
+      expect(secondCousins).toHaveLength(1);
+      expect(secondCousins[0].basename).toBe('C');
+
+      // B should not be in second cousins
+      expect(secondCousins.some(f => f.basename === 'B')).toBe(false);
+    });
+
+    it('should return empty array when no great-grandparents exist', () => {
+      // Setup: A → P → GP (only two generations)
+      const graph = createMockGraph([
+        ['A', 'P'],
+        ['P', 'GP']
+      ]);
+      const engine = new RelationshipEngine(graph);
+      const fileA = (graph as any).graph.get('A')!.file;
+
+      const cousins = engine.getCousins(fileA, 2);
+
+      // Expect: []
+      // Cannot have second cousins without great-grandparents
+      expect(cousins).toHaveLength(0);
+    });
+  });
+
+  describe('Higher Degree Cousins', () => {
+    it('should support third cousins (degree 3)', () => {
+      // Setup: Deep family tree with great-great-grandparents
+      //           GGGP
+      //          /    \
+      //       GGP1    GGP2
+      //        |        |
+      //       GP1      GP2
+      //        |        |
+      //       P1       P2
+      //        |        |
+      //        A        B
+      const graph = createMockGraph([
+        ['A', 'P1'],
+        ['P1', 'GP1'],
+        ['GP1', 'GGP1'],
+        ['GGP1', 'GGGP'],
+        ['B', 'P2'],
+        ['P2', 'GP2'],
+        ['GP2', 'GGP2'],
+        ['GGP2', 'GGGP']
+      ]);
+      const engine = new RelationshipEngine(graph);
+      const fileA = (graph as any).graph.get('A')!.file;
+
+      const cousins = engine.getCousins(fileA, 3);
+
+      // Expect: [B] (third cousins via GGGP)
+      expect(cousins).toHaveLength(1);
+      expect(cousins[0].basename).toBe('B');
+    });
+
+    it('should return empty array for degree larger than tree depth', () => {
+      // Setup: A → P → GP (only 2 generations)
+      const graph = createMockGraph([
+        ['A', 'P'],
+        ['P', 'GP']
+      ]);
+      const engine = new RelationshipEngine(graph);
+      const fileA = (graph as any).graph.get('A')!.file;
+
+      const cousins = engine.getCousins(fileA, 5);
+
+      // Expect: []
+      // No 5th cousins possible with only 2 ancestor generations
+      expect(cousins).toHaveLength(0);
+    });
+  });
+
+  describe('Complex Family Structures', () => {
+    it('should handle diamond structures in ancestry', () => {
+      // Setup:
+      //        GGP
+      //       /   \
+      //     GP1   GP2
+      //       \   /
+      //         P
+      //         |
+      //         A
+      // Also add cousin path
+      const graph = createMockGraph([
+        ['A', 'P'],
+        ['P', 'GP1'],
+        ['P', 'GP2'],
+        ['GP1', 'GGP'],
+        ['GP2', 'GGP'],
+        ['B', 'P2'],
+        ['P2', 'GP3'],
+        ['GP3', 'GGP']
+      ]);
+      const engine = new RelationshipEngine(graph);
+      const fileA = (graph as any).graph.get('A')!.file;
+
+      const cousins = engine.getCousins(fileA, 2);
+
+      // Verify correct handling of converging lineages
+      expect(cousins).toBeDefined();
+      // B should be second cousin via GGP
+      expect(cousins.some(f => f.basename === 'B')).toBe(true);
+    });
+
+    it('should not have duplicates when cousin reachable via multiple ancestors', () => {
+      // Setup: Complex graph where cousin appears in multiple paths
+      const graph = createMockGraph([
+        ['A', 'P1'],
+        ['A', 'P2'], // A has two parents
+        ['P1', 'GP1'],
+        ['P2', 'GP2'],
+        ['GP1', 'GGP'],
+        ['GP2', 'GGP'],
+        ['B', 'P3'],
+        ['P3', 'GP3'],
+        ['GP3', 'GGP']
+      ]);
+      const engine = new RelationshipEngine(graph);
+      const fileA = (graph as any).graph.get('A')!.file;
+
+      const cousins = engine.getCousins(fileA, 2);
+
+      // Each cousin should appear only once
+      const paths = cousins.map(f => f.path);
+      const uniquePaths = new Set(paths);
+      expect(paths.length).toBe(uniquePaths.size);
+    });
+
+    it('should handle nodes with multiple parents at each level', () => {
+      // Setup:
+      //      GP1    GP2
+      //       |      |
+      //      P1     P2
+      //       \    /
+      //         A      (A has two parents)
+      // Also:
+      //      GP1    GP3
+      //       |      |
+      //      P3     P4
+      //       \    /
+      //         B      (B has two parents, shares GP1 with A)
+      const graph = createMockGraph([
+        ['A', 'P1'],
+        ['A', 'P2'],
+        ['P1', 'GP1'],
+        ['P2', 'GP2'],
+        ['B', 'P3'],
+        ['B', 'P4'],
+        ['P3', 'GP1'], // Shares GP1 with A's lineage
+        ['P4', 'GP3']
+      ]);
+      const engine = new RelationshipEngine(graph);
+      const fileA = (graph as any).graph.get('A')!.file;
+
+      const cousins = engine.getCousins(fileA, 1);
+
+      // Cousins from both lineages
+      expect(cousins).toBeDefined();
+      // B should be a cousin via shared GP1
+      expect(cousins.some(f => f.basename === 'B')).toBe(true);
+    });
+  });
+
+  describe('Cycle Protection', () => {
+    it('should handle cycles in ancestry without infinite loop', () => {
+      // Setup: A → P → GP → P (cycle back to parent)
+      const graph = createMockGraph([
+        ['A', 'P'],
+        ['P', 'GP'],
+        ['GP', 'P'], // Cycle
+        ['B', 'P2'],
+        ['P2', 'GP']
+      ]);
+      const engine = new RelationshipEngine(graph);
+      const fileA = (graph as any).graph.get('A')!.file;
+
+      const cousins = engine.getCousins(fileA, 1);
+
+      // Expect: Completes without hanging
+      expect(cousins).toBeDefined();
+      // B should be cousin via shared GP
+      expect(cousins.some(f => f.basename === 'B')).toBe(true);
+    });
+
+    it('should handle cycles in descendant paths', () => {
+      // Setup: Cycle exists in descendant traversal from grandparent
+      const graph = createMockGraph([
+        ['A', 'P1'],
+        ['P1', 'GP'],
+        ['B', 'P2'],
+        ['P2', 'GP'],
+        ['C', 'B'], // C is child of B
+        ['B', 'C']  // Cycle: B is also child of C
+      ]);
+      const engine = new RelationshipEngine(graph);
+      const fileA = (graph as any).graph.get('A')!.file;
+
+      const cousins = engine.getCousins(fileA, 1);
+
+      // Expect: Cycle handled gracefully
+      expect(cousins).toBeDefined();
+      // B should still be identified as cousin
+      expect(cousins.some(f => f.basename === 'B')).toBe(true);
+      // C should not be cousin (different generation)
+      expect(cousins.every(f => f.basename !== 'C')).toBe(true);
+    });
+
+    it('should handle self-loops in family tree', () => {
+      // Setup: Node that references itself
+      const graph = createMockGraph([
+        ['A', 'P1'],
+        ['P1', 'GP'],
+        ['GP', 'GP'], // Self-loop
+        ['B', 'P2'],
+        ['P2', 'GP']
+      ]);
+      const engine = new RelationshipEngine(graph);
+      const fileA = (graph as any).graph.get('A')!.file;
+
+      const cousins = engine.getCousins(fileA, 1);
+
+      // Expect: No errors, sensible results
+      expect(cousins).toBeDefined();
+      expect(cousins.some(f => f.basename === 'B')).toBe(true);
+    });
+  });
+
+  describe('Edge Cases', () => {
+    it('should return empty array for degree = 0', () => {
+      // Test: getCousins(A, 0)
+      const { graph, files } = createFirstCousinStructure();
+      const engine = new RelationshipEngine(graph);
+
+      const cousins = engine.getCousins(files.A, 0);
+
+      // Expect: [] (degree must be >= 1)
+      expect(cousins).toHaveLength(0);
+    });
+
+    it('should return empty array for negative degree', () => {
+      // Test: getCousins(A, -1)
+      const { graph, files } = createFirstCousinStructure();
+      const engine = new RelationshipEngine(graph);
+
+      const cousins = engine.getCousins(files.A, -1);
+
+      // Expect: [] (invalid degree)
+      expect(cousins).toHaveLength(0);
+    });
+
+    it('should handle very large degree (100)', () => {
+      // Setup: Tree with depth 3
+      const graph = createMockGraph([
+        ['A', 'P'],
+        ['P', 'GP'],
+        ['GP', 'GGP']
+      ]);
+      const engine = new RelationshipEngine(graph);
+      const fileA = (graph as any).graph.get('A')!.file;
+
+      const cousins = engine.getCousins(fileA, 100);
+
+      // Expect: [] (no ancestors at generation 101)
+      expect(cousins).toHaveLength(0);
+    });
+
+    it('should handle empty graph', () => {
+      // Setup: Empty graph
+      const graph = createMockGraph([]);
+      const engine = new RelationshipEngine(graph);
+      const fileA = createMockFile('A', 'A');
+
+      const cousins = engine.getCousins(fileA, 1);
+
+      // Expect: [] or graceful handling
+      expect(cousins).toHaveLength(0);
+    });
+
+    it('should handle isolated node (no relations)', () => {
+      // Setup: Node A with no parents or children
+      const graph = createMockGraph([]);
+      const engine = new RelationshipEngine(graph);
+      const fileA = createMockFile('A', 'A');
+
+      const cousins = engine.getCousins(fileA, 1);
+
+      // Expect: []
+      expect(cousins).toHaveLength(0);
+    });
+
+    it('should handle root node (no parents)', () => {
+      // Setup: Node A with children but no parents
+      const graph = createMockGraph([
+        ['B', 'A'],
+        ['C', 'A']
+      ]);
+      const engine = new RelationshipEngine(graph);
+      const fileA = (graph as any).graph.get('A')!.file;
+
+      const cousins = engine.getCousins(fileA, 1);
+
+      // Expect: []
+      expect(cousins).toHaveLength(0);
+    });
+  });
+
+  describe('Sibling Exclusion', () => {
+    it('should exclude full siblings (share all parents)', () => {
+      // Setup: A and B both have parents P1 and P2
+      const graph = createMockGraph([
+        ['A', 'P1'],
+        ['A', 'P2'],
+        ['B', 'P1'],
+        ['B', 'P2'],
+        ['C', 'P3'],
+        ['P1', 'GP'],
+        ['P2', 'GP'],
+        ['P3', 'GP']
+      ]);
+      const engine = new RelationshipEngine(graph);
+      const fileA = (graph as any).graph.get('A')!.file;
+
+      const cousins = engine.getCousins(fileA, 1);
+
+      // Expect: B not in results (full sibling, not cousin)
+      // C should be in results (cousin)
+      expect(cousins.some(f => f.basename === 'B')).toBe(false);
+      expect(cousins.some(f => f.basename === 'C')).toBe(true);
+    });
+
+    it('should exclude half-siblings (share some parents)', () => {
+      // Setup: A has parents P1 and P2, B has parent P1
+      const graph = createMockGraph([
+        ['A', 'P1'],
+        ['A', 'P2'],
+        ['B', 'P1'],
+        ['C', 'P3'],
+        ['P1', 'GP'],
+        ['P2', 'GP'],
+        ['P3', 'GP']
+      ]);
+      const engine = new RelationshipEngine(graph);
+      const fileA = (graph as any).graph.get('A')!.file;
+
+      const cousins = engine.getCousins(fileA, 1);
+
+      // Expect: B not in results (half-sibling via P1)
+      // C should be in results (cousin)
+      expect(cousins.some(f => f.basename === 'B')).toBe(false);
+      expect(cousins.some(f => f.basename === 'C')).toBe(true);
+    });
+  });
+
+  describe('Consistency & Deduplication', () => {
+    it('should not include duplicates in result', () => {
+      // Setup: Complex graph with multiple paths to same cousin
+      const graph = createMockGraph([
+        ['A', 'P1'],
+        ['A', 'P2'], // A has two parents
+        ['P1', 'GP1'],
+        ['P2', 'GP2'],
+        ['GP1', 'GGP'],
+        ['GP2', 'GGP'],
+        ['B', 'P3'],
+        ['P3', 'GP3'],
+        ['P3', 'GP4'], // P3 has two parents
+        ['GP3', 'GGP'],
+        ['GP4', 'GGP']
+      ]);
+      const engine = new RelationshipEngine(graph);
+      const fileA = (graph as any).graph.get('A')!.file;
+
+      const cousins = engine.getCousins(fileA, 2);
+
+      // Each cousin should appear exactly once
+      const paths = cousins.map(f => f.path);
+      const uniquePaths = new Set(paths);
+      expect(paths.length).toBe(uniquePaths.size);
+    });
+
+    it('should return consistent results across multiple calls', () => {
+      // Test: getCousins(A, 1) called multiple times
+      const { graph, files } = createFamilyWithSiblingsAndCousins();
+      const engine = new RelationshipEngine(graph);
+
+      const cousins1 = engine.getCousins(files.A, 1);
+      const cousins2 = engine.getCousins(files.A, 1);
+      const cousins3 = engine.getCousins(files.A, 1);
+
+      // Same results each time (deterministic)
+      const order1 = cousins1.map(f => f.basename).join(',');
+      const order2 = cousins2.map(f => f.basename).join(',');
+      const order3 = cousins3.map(f => f.basename).join(',');
+
+      expect(order1).toBe(order2);
+      expect(order2).toBe(order3);
+    });
+  });
+
+  describe('Performance', () => {
+    it('should compute cousins for complex graph in reasonable time', () => {
+      // Setup: Graph with many nodes, multiple generations
+      const edges: [string, string][] = [];
+
+      // Create 10 grandparents
+      for (let i = 0; i < 10; i++) {
+        edges.push([`GP${i}`, 'GGP']);
+      }
+
+      // Each grandparent has 5 parents
+      for (let i = 0; i < 10; i++) {
+        for (let j = 0; j < 5; j++) {
+          edges.push([`P${i}_${j}`, `GP${i}`]);
+        }
+      }
+
+      // Each parent has 3 children
+      for (let i = 0; i < 10; i++) {
+        for (let j = 0; j < 5; j++) {
+          for (let k = 0; k < 3; k++) {
+            edges.push([`C${i}_${j}_${k}`, `P${i}_${j}`]);
+          }
+        }
+      }
+
+      const graph = createMockGraph(edges, 3);
+      const engine = new RelationshipEngine(graph);
+      const fileA = (graph as any).graph.get('C0_0_0')!.file;
+
+      const startTime = Date.now();
+      const cousins = engine.getCousins(fileA, 1);
+      const endTime = Date.now();
+
+      // Measure: Execution time
+      const duration = endTime - startTime;
+
+      // Expect: <100ms
+      expect(duration).toBeLessThan(100);
+
+      // Verify some cousins were found
+      expect(cousins.length).toBeGreaterThan(0);
+    });
+
+    it('should handle large sibling sets efficiently', () => {
+      // Setup: Node with many siblings
+      const edges: [string, string][] = [];
+
+      // P1 has 50 children including A
+      edges.push(['A', 'P1']);
+      for (let i = 0; i < 49; i++) {
+        edges.push([`S${i}`, 'P1']);
+      }
+
+      // P2 has 50 children (potential cousins)
+      for (let i = 0; i < 50; i++) {
+        edges.push([`C${i}`, 'P2']);
+      }
+
+      // Both parents share GP
+      edges.push(['P1', 'GP']);
+      edges.push(['P2', 'GP']);
+
+      const graph = createMockGraph(edges, 2);
+      const engine = new RelationshipEngine(graph);
+      const fileA = (graph as any).graph.get('A')!.file;
+
+      const startTime = Date.now();
+      const cousins = engine.getCousins(fileA, 1);
+      const endTime = Date.now();
+
+      // Should complete quickly
+      const duration = endTime - startTime;
+      expect(duration).toBeLessThan(100);
+
+      // All 49 siblings should be excluded
+      // All 50 from P2 should be cousins
+      expect(cousins).toHaveLength(50);
+    });
+
+    it('should handle wide family tree (many branches)', () => {
+      // Setup: Grandparent with 20 children, each with 10 children
+      const edges: [string, string][] = [];
+
+      edges.push(['A', 'P0']); // A is child of P0
+
+      for (let i = 0; i < 20; i++) {
+        edges.push([`P${i}`, 'GP']);
+
+        for (let j = 0; j < 10; j++) {
+          // Don't create A again
+          if (i === 0 && j === 0) continue;
+          edges.push([`C${i}_${j}`, `P${i}`]);
+        }
+      }
+
+      const graph = createMockGraph(edges, 2);
+      const engine = new RelationshipEngine(graph);
+      const fileA = (graph as any).graph.get('A')!.file;
+
+      const startTime = Date.now();
+      const cousins = engine.getCousins(fileA, 1);
+      const endTime = Date.now();
+
+      // Should complete efficiently
+      const duration = endTime - startTime;
+      expect(duration).toBeLessThan(200);
+
+      // Should find cousins from other branches
+      expect(cousins.length).toBeGreaterThan(0);
+    });
+  });
+});

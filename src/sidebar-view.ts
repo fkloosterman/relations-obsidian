@@ -359,6 +359,7 @@ export class RelationSidebarView extends ItemView {
 		engine: any,
 		graph: any
 	): void {
+		console.log('[Relation Sidebar] >>> Rendering section:', sectionType);
 		const sectionConfig = fieldConfig[sectionType];
 		const sectionContainer = this.contentContainer.createDiv('relation-section');
 		sectionContainer.addClass(`relation-section-${sectionType}`);
@@ -369,6 +370,7 @@ export class RelationSidebarView extends ItemView {
 
 		// Create section header (clickable to toggle)
 		const header = sectionContainer.createDiv('relation-section-header');
+		console.log('[Relation Sidebar] >>> Created header for:', sectionType);
 
 		// Add toggle button
 		const toggle = header.createDiv('relation-section-toggle');
@@ -377,12 +379,24 @@ export class RelationSidebarView extends ItemView {
 		const title = header.createDiv('relation-section-title');
 		title.setText(sectionConfig.displayName || sectionType);
 
+		console.log('[Relation Sidebar] >>> Attaching click listener to header:', sectionType);
+
 		// Make entire header clickable
 		header.addEventListener('click', (e) => {
-			console.log('[Relation Sidebar] Header clicked for section:', sectionType);
+			console.log('[Relation Sidebar] *** HEADER CLICKED ***:', sectionType);
 			e.preventDefault();
 			e.stopPropagation();
 			this.toggleSection(sectionType);
+		});
+
+		// Also test with mouseenter
+		header.addEventListener('mouseenter', () => {
+			console.log('[Relation Sidebar] >>> Mouse entered header:', sectionType);
+		});
+
+		console.log('[Relation Sidebar] >>> Listener attached. Header styles:', {
+			pointerEvents: header.style.pointerEvents || 'not set',
+			cursor: header.style.cursor || 'not set'
 		});
 
 		// Create section content
@@ -414,7 +428,9 @@ export class RelationSidebarView extends ItemView {
 	 * Renders siblings as a flat list instead of a tree.
 	 */
 	private renderSiblingsList(file: TFile, engine: any, container: HTMLElement): void {
+		console.log('[Relation Sidebar] >>> Rendering siblings list');
 		const siblings = engine.getSiblings(file, false); // Exclude self
+		console.log('[Relation Sidebar] >>> Found siblings:', siblings.length);
 
 		if (siblings.length === 0) {
 			const emptyMessage = container.createDiv('relation-section-empty');
@@ -424,7 +440,8 @@ export class RelationSidebarView extends ItemView {
 
 		const listContainer = container.createDiv('relation-siblings-list');
 
-		siblings.forEach((sibling: TFile) => {
+		siblings.forEach((sibling: TFile, index: number) => {
+			console.log(`[Relation Sidebar] >>> Creating sibling item ${index + 1}/${siblings.length}:`, sibling.basename);
 			const item = listContainer.createDiv('relation-sibling-item');
 
 			// File icon
@@ -434,8 +451,10 @@ export class RelationSidebarView extends ItemView {
 			// File name (clickable)
 			const name = item.createSpan('relation-sibling-name');
 			name.setText(sibling.basename);
+
+			console.log(`[Relation Sidebar] >>> Attaching click listener to sibling:`, sibling.basename);
 			name.addEventListener('click', async (e) => {
-				console.log('[Relation Sidebar] Sibling clicked:', sibling.basename, sibling.path);
+				console.log('[Relation Sidebar] *** SIBLING CLICKED ***:', sibling.basename, sibling.path);
 				e.preventDefault();
 				e.stopPropagation();
 
@@ -453,6 +472,16 @@ export class RelationSidebarView extends ItemView {
 				} catch (error) {
 					console.error('[Relation Sidebar] Error opening file:', error);
 				}
+			});
+
+			// Also test with mouseenter
+			name.addEventListener('mouseenter', () => {
+				console.log('[Relation Sidebar] >>> Mouse entered sibling:', sibling.basename);
+			});
+
+			console.log(`[Relation Sidebar] >>> Sibling name element styles:`, {
+				pointerEvents: name.style.pointerEvents || 'not set',
+				cursor: name.style.cursor || 'not set'
 			});
 
 			// Hover preview

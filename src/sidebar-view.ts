@@ -1,7 +1,8 @@
 import { ItemView, WorkspaceLeaf, TFile } from 'obsidian';
 import type ParentRelationPlugin from './main';
 import { TreeRenderer } from './tree-renderer';
-import { buildAncestorTree, TreeNode } from './tree-model';
+import { buildAncestorTree, buildDescendantTree, buildSiblingTree, TreeNode } from './tree-model';
+import { ParentFieldSelector } from './parent-field-selector';
 
 /**
  * View type identifier for the relation sidebar
@@ -56,6 +57,7 @@ export class RelationSidebarView extends ItemView {
 	private currentFile: TFile | null = null;
 	private viewState: SidebarViewState;
 	private contentContainer!: HTMLElement;
+	private fieldSelector: ParentFieldSelector | null = null;
 
 	constructor(leaf: WorkspaceLeaf, plugin: ParentRelationPlugin) {
 		super(leaf);
@@ -128,6 +130,11 @@ export class RelationSidebarView extends ItemView {
 	async onClose(): Promise<void> {
 		// Cleanup renderer
 		this.renderer.destroy();
+
+		// Cleanup field selector
+		if (this.fieldSelector) {
+			this.fieldSelector.destroy();
+		}
 	}
 
 	/**
@@ -140,8 +147,31 @@ export class RelationSidebarView extends ItemView {
 		const title = header.createDiv('relation-sidebar-title');
 		title.setText('Relation Explorer');
 
-		// We'll add mode selector and controls in Milestone 4.2
-		// For now, just show the title
+		// Parent field selector (only shown if multiple fields)
+		if (this.plugin.settings.parentFields.length > 1) {
+			const selectorContainer = header.createDiv('parent-field-selector-container');
+
+			this.fieldSelector = new ParentFieldSelector(
+				this.app,
+				selectorContainer,
+				{
+					fields: this.plugin.settings.parentFields,
+					selectedField: this.viewState.selectedParentField,
+					uiStyle: this.plugin.settings.uiStyle,
+					onChange: (fieldName: string) => {
+						this.onFieldChange(fieldName);
+					}
+				}
+			);
+		}
+	}
+
+	/**
+	 * Handles field selection change.
+	 */
+	private onFieldChange(fieldName: string): void {
+		this.viewState.selectedParentField = fieldName;
+		this.updateView();
 	}
 
 	/**
@@ -265,22 +295,53 @@ export class RelationSidebarView extends ItemView {
 	}
 
 	/**
-	 * Renders the tree for the given file.
+	 * Renders the tree for the given file with three sections.
 	 */
 	private renderTree(file: TFile): void {
 		try {
-			// Build tree based on current mode
-			const tree = this.buildTreeForMode(file);
+			// Get the field configuration
+			const fieldConfig = this.plugin.settings.parentFields.find(
+				f => f.name === this.viewState.selectedParentField
+			);
 
-			console.log('[Relation Explorer] Built tree for', file.basename);
+			if (!fieldConfig) {
+				this.showErrorState(new Error('Field configuration not found'));
+				return;
+			}
 
-			if (!tree) {
+			// Get the engine and graph for the current field
+			const engine = this.plugin.getEngineForField(this.viewState.selectedParentField);
+			const graph = this.plugin.getGraphForField(this.viewState.selectedParentField);
+
+			if (!engine || !graph) {
+				this.showErrorState(new Error('Engine or graph not found'));
+				return;
+			}
+
+			// Check if any sections will be visible
+			const hasVisibleSections = fieldConfig.ancestors.visible ||
+				fieldConfig.descendants.visible ||
+				fieldConfig.siblings.visible;
+
+			if (!hasVisibleSections) {
 				this.showNoRelationsState();
 				return;
 			}
 
-			// Render tree
-			this.renderer.render(tree, this.contentContainer);
+			// Render ancestors section
+			if (fieldConfig.ancestors.visible) {
+				this.renderSection('ancestors', file, fieldConfig, engine, graph);
+			}
+
+			// Render descendants section
+			if (fieldConfig.descendants.visible) {
+				this.renderSection('descendants', file, fieldConfig, engine, graph);
+			}
+
+			// Render siblings section
+			if (fieldConfig.siblings.visible) {
+				this.renderSection('siblings', file, fieldConfig, engine, graph);
+			}
 
 		} catch (error) {
 			console.error('[Relation Explorer] Error rendering tree:', error);
@@ -289,7 +350,159 @@ export class RelationSidebarView extends ItemView {
 	}
 
 	/**
+	 * Renders a single collapsible section (ancestors, descendants, or siblings).
+	 */
+	private renderSection(
+		sectionType: 'ancestors' | 'descendants' | 'siblings',
+		file: TFile,
+		fieldConfig: any,
+		engine: any,
+		graph: any
+	): void {
+		const sectionConfig = fieldConfig[sectionType];
+		const sectionContainer = this.contentContainer.createDiv('relation-section');
+		sectionContainer.addClass(`relation-section-${sectionType}`);
+
+		// Create section header
+		const header = sectionContainer.createDiv('relation-section-header');
+		const title = header.createDiv('relation-section-title');
+		title.setText(sectionConfig.displayName || sectionType);
+
+		// Check if section should be collapsed
+		const collapsedSections = this.viewState.collapsedSections[this.viewState.selectedParentField] || [];
+		const isCollapsed = sectionConfig.collapsed || collapsedSections.includes(sectionType);
+
+		// Add toggle button
+		const toggle = header.createDiv('relation-section-toggle');
+		toggle.setText(isCollapsed ? '▶' : '▼');
+		toggle.addEventListener('click', () => {
+			this.toggleSection(sectionType);
+		});
+
+		// Create section content
+		const content = sectionContainer.createDiv('relation-section-content');
+		if (isCollapsed) {
+			content.addClass('is-collapsed');
+			content.style.display = 'none';
+		}
+
+		// Build and render tree for this section
+		const tree = this.buildTreeForSection(sectionType, file, fieldConfig, engine, graph);
+
+		if (tree) {
+			this.renderer.render(tree, content);
+		} else {
+			// Show empty message for this section
+			const emptyMessage = content.createDiv('relation-section-empty');
+			emptyMessage.setText(this.getEmptyMessage(sectionType));
+		}
+	}
+
+	/**
+	 * Toggles a section's collapsed state.
+	 */
+	private toggleSection(sectionType: string): void {
+		const fieldName = this.viewState.selectedParentField;
+
+		// Initialize collapsed sections for this field if needed
+		if (!this.viewState.collapsedSections[fieldName]) {
+			this.viewState.collapsedSections[fieldName] = [];
+		}
+
+		const collapsedSections = this.viewState.collapsedSections[fieldName];
+		const index = collapsedSections.indexOf(sectionType);
+
+		if (index >= 0) {
+			// Expand
+			collapsedSections.splice(index, 1);
+		} else {
+			// Collapse
+			collapsedSections.push(sectionType);
+		}
+
+		// Re-render to update UI
+		this.updateView();
+	}
+
+	/**
+	 * Gets an empty message for a section.
+	 */
+	private getEmptyMessage(sectionType: string): string {
+		switch (sectionType) {
+			case 'ancestors':
+				return 'No ancestors found';
+			case 'descendants':
+				return 'No descendants found';
+			case 'siblings':
+				return 'No siblings found';
+			default:
+				return 'No relationships found';
+		}
+	}
+
+	/**
+	 * Builds a tree for a specific section type.
+	 */
+	private buildTreeForSection(
+		sectionType: 'ancestors' | 'descendants' | 'siblings',
+		file: TFile,
+		fieldConfig: any,
+		engine: any,
+		graph: any
+	): TreeNode | null {
+		const sectionConfig = fieldConfig[sectionType];
+
+		try {
+			switch (sectionType) {
+				case 'ancestors':
+					return buildAncestorTree(file, engine, graph, {
+						maxDepth: sectionConfig.maxDepth ?? 5,
+						detectCycles: true,
+						includeMetadata: true
+					});
+
+				case 'descendants':
+					return buildDescendantTree(file, engine, graph, {
+						maxDepth: sectionConfig.maxDepth ?? 5,
+						detectCycles: true,
+						includeMetadata: true
+					});
+
+			case 'siblings':
+				// buildSiblingTree returns TreeNode[], so we need to wrap it
+				const siblings = buildSiblingTree(file, engine, graph, {
+					detectCycles: true,
+					includeMetadata: true
+				});
+
+				// If no siblings, return null
+				if (siblings.length === 0) {
+					return null;
+				}
+
+				// Create a container node for siblings
+				return {
+					file: file,
+					children: siblings,
+					depth: 0,
+					isCycle: false,
+					metadata: {
+						type: 'siblings-container'
+					}
+				};
+
+				default:
+					return null;
+			}
+		} catch (error) {
+			console.error(`[Relation Explorer] Error building ${sectionType} tree:`, error);
+			return null;
+		}
+	}
+
+	/**
 	 * Builds a tree based on the current display mode.
+	 * @deprecated Use buildTreeForSection instead
 	 */
 	private buildTreeForMode(file: TFile) {
 		// Get the engine and graph for the currently selected parent field

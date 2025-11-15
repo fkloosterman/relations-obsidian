@@ -193,7 +193,7 @@ export default class ParentRelationPlugin extends Plugin {
   /**
    * Builds all graphs.
    */
-  private buildAllGraphs(): void {
+  buildAllGraphs(): void {
     this.relationGraphs.forEach(graph => graph.build());
   }
 

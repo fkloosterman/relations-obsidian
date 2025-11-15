@@ -5,6 +5,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
+    pool: 'forks',
     include: ['tests/**/*.test.ts'],
     exclude: ['node_modules', 'tests/integration/**'],
     coverage: {

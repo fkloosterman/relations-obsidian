@@ -344,8 +344,15 @@ export class RelationSidebarView extends ItemView {
 			text: 'No relationships found',
 			cls: 'relation-sidebar-empty-text'
 		});
+
+		// Get the display name of the current field
+		const fieldConfig = this.plugin.settings.parentFields.find(
+			f => f.name === this.viewState.selectedParentField
+		);
+		const fieldDisplayName = fieldConfig?.displayName || this.viewState.selectedParentField;
+
 		empty.createEl('p', {
-			text: `This note has no ${this.viewState.mode}`,
+			text: `This note has no ancestors in the "${fieldDisplayName}" hierarchy`,
 			cls: 'relation-sidebar-empty-hint'
 		});
 	}

@@ -435,3 +435,52 @@
 .relation-section-siblings .relation-section-header {
   /* Could add a subtle color accent */
 }
+
+/* ============================================
+   Siblings List Styles
+   ============================================ */
+
+.relation-siblings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.relation-sibling-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  transition: background-color 0.1s ease;
+}
+
+.relation-sibling-item:hover {
+  background-color: var(--background-modifier-hover);
+}
+
+.relation-sibling-icon {
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.relation-sibling-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.relation-sibling-name {
+  color: var(--text-accent);
+  cursor: pointer;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.relation-sibling-name:hover {
+  text-decoration: underline;
+}

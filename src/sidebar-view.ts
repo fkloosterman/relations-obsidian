@@ -363,19 +363,24 @@ export class RelationSidebarView extends ItemView {
 		const sectionContainer = this.contentContainer.createDiv('relation-section');
 		sectionContainer.addClass(`relation-section-${sectionType}`);
 
-		// Create section header
-		const header = sectionContainer.createDiv('relation-section-header');
-		const title = header.createDiv('relation-section-title');
-		title.setText(sectionConfig.displayName || sectionType);
-
 		// Check if section should be collapsed
 		const collapsedSections = this.viewState.collapsedSections[this.viewState.selectedParentField] || [];
 		const isCollapsed = sectionConfig.collapsed || collapsedSections.includes(sectionType);
 
+		// Create section header (clickable to toggle)
+		const header = sectionContainer.createDiv('relation-section-header');
+
 		// Add toggle button
 		const toggle = header.createDiv('relation-section-toggle');
 		toggle.setText(isCollapsed ? '▶' : '▼');
-		toggle.addEventListener('click', () => {
+
+		const title = header.createDiv('relation-section-title');
+		title.setText(sectionConfig.displayName || sectionType);
+
+		// Make entire header clickable
+		header.addEventListener('click', (e) => {
+			e.preventDefault();
+			e.stopPropagation();
 			this.toggleSection(sectionType);
 		});
 
@@ -386,16 +391,71 @@ export class RelationSidebarView extends ItemView {
 			content.style.display = 'none';
 		}
 
-		// Build and render tree for this section
-		const tree = this.buildTreeForSection(sectionType, file, fieldConfig, engine, graph);
-
-		if (tree) {
-			this.renderer.render(tree, content);
+		// Build and render tree/list for this section
+		if (sectionType === 'siblings') {
+			// Render siblings as a flat list
+			this.renderSiblingsList(file, engine, content);
 		} else {
-			// Show empty message for this section
-			const emptyMessage = content.createDiv('relation-section-empty');
-			emptyMessage.setText(this.getEmptyMessage(sectionType));
+			// Build and render tree for ancestors/descendants
+			const tree = this.buildTreeForSection(sectionType, file, fieldConfig, engine, graph);
+
+			if (tree) {
+				this.renderer.render(tree, content);
+			} else {
+				// Show empty message for this section
+				const emptyMessage = content.createDiv('relation-section-empty');
+				emptyMessage.setText(this.getEmptyMessage(sectionType));
+			}
 		}
+	}
+
+	/**
+	 * Renders siblings as a flat list instead of a tree.
+	 */
+	private renderSiblingsList(file: TFile, engine: any, container: HTMLElement): void {
+		const siblings = engine.getSiblings(file, false); // Exclude self
+
+		if (siblings.length === 0) {
+			const emptyMessage = container.createDiv('relation-section-empty');
+			emptyMessage.setText(this.getEmptyMessage('siblings'));
+			return;
+		}
+
+		const listContainer = container.createDiv('relation-siblings-list');
+
+		siblings.forEach((sibling: TFile) => {
+			const item = listContainer.createDiv('relation-sibling-item');
+
+			// File icon
+			const icon = item.createDiv('relation-sibling-icon');
+			icon.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>';
+
+			// File name (clickable)
+			const name = item.createSpan('relation-sibling-name');
+			name.setText(sibling.basename);
+			name.addEventListener('click', async (e) => {
+				e.preventDefault();
+				e.stopPropagation();
+
+				// Open file
+				if (e.ctrlKey || e.metaKey) {
+					await this.app.workspace.openLinkText(sibling.basename, '', 'split');
+				} else {
+					await this.app.workspace.getLeaf().openFile(sibling);
+				}
+			});
+
+			// Hover preview
+			name.addEventListener('mouseenter', (e) => {
+				this.app.workspace.trigger('hover-link', {
+					event: e,
+					source: 'relation-explorer',
+					hoverParent: item,
+					targetEl: name,
+					linktext: sibling.path
+				});
+			});
+		});
 	}
 
 	/**

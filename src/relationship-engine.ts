@@ -148,4 +148,69 @@ export class RelationshipEngine {
 
     return result;
   }
+
+  /**
+   * Gets siblings of a file (notes sharing at least one parent).
+   *
+   * Returns all notes that share at least one parent with the specified file.
+   * This includes both full siblings (sharing all parents) and half-siblings
+   * (sharing only some parents).
+   *
+   * @param file - The file to get siblings for
+   * @param includeSelf - Whether to include the queried file in results (default: false)
+   * @returns Array of sibling files
+   *
+   * @example
+   * // Given: Parent P has children A, B, C
+   * // getSiblings(A, false) returns: [B, C]
+   * // getSiblings(A, true) returns: [A, B, C]
+   *
+   * @example
+   * // Given: Parent P1 has children A, B; Parent P2 has children A, C
+   * // getSiblings(A, false) returns: [B, C]
+   * // A has half-sibling B (via P1) and half-sibling C (via P2)
+   *
+   * @example
+   * // Given: A has no parents (root node)
+   * // getSiblings(A) returns: []
+   * // Root nodes have no siblings
+   */
+  getSiblings(file: TFile, includeSelf: boolean = false): TFile[] {
+    // Get all parents of the file
+    const parents = this.graph.getParents(file);
+
+    // Root nodes (no parents) have no siblings
+    if (parents.length === 0) {
+      return [];
+    }
+
+    // Collect all unique children from all parents
+    const siblingSet = new Set<string>();
+
+    for (const parent of parents) {
+      const children = this.graph.getChildren(parent);
+
+      for (const child of children) {
+        siblingSet.add(child.path);
+      }
+    }
+
+    // Convert set to array of TFile objects
+    const siblings: TFile[] = [];
+
+    for (const siblingPath of siblingSet) {
+      // Skip self if not including self
+      if (!includeSelf && siblingPath === file.path) {
+        continue;
+      }
+
+      // Get TFile object for sibling
+      const siblingFile = this.graph.getFileByPath(siblingPath);
+      if (siblingFile) {
+        siblings.push(siblingFile);
+      }
+    }
+
+    return siblings;
+  }
 }

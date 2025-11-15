@@ -114,12 +114,14 @@ export class RelationSidebarView extends ItemView {
 		// Prevent sidebar container from bubbling events to ItemView, except for interactive elements
 		this.containerEl.addEventListener('click', (e) => {
 			const target = e.target as Element;
-			// Allow clicks on: tree toggles, tree names, section headers, and sibling names
+			// Allow clicks on: tree toggles, tree names, section headers, sibling names, and field selector buttons
 			if (target &&
 				!target.closest('.relation-tree-toggle') &&
 				!target.closest('.relation-tree-name-clickable') &&
 				!target.closest('.relation-section-header') &&
-				!target.closest('.relation-sibling-name')) {
+				!target.closest('.relation-sibling-name') &&
+				!target.closest('.parent-field-segment') &&
+				!target.closest('.parent-field-dropdown')) {
 				e.stopPropagation();
 			}
 		}, { capture: true });
@@ -426,7 +428,8 @@ export class RelationSidebarView extends ItemView {
 			// Build and render tree for ancestors/descendants
 			const tree = this.buildTreeForSection(sectionType, file, fieldConfig, engine, graph);
 
-			if (tree) {
+			// Check if tree has any children (ancestors/descendants exist)
+			if (tree && tree.children && tree.children.length > 0) {
 				this.renderer.render(tree, content);
 			} else {
 				// Show empty message for this section

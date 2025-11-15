@@ -812,6 +812,16 @@ class ParentRelationSettingTab extends PluginSettingTab {
       return;
     }
 
+    // Check if field names actually changed
+    const currentFieldNames = this.plugin.settings.parentFields.map(f => f.name).sort();
+    const newFieldNames = [...fieldNames].sort();
+
+    if (currentFieldNames.length === newFieldNames.length &&
+        currentFieldNames.every((name, i) => name === newFieldNames[i])) {
+      // No change, skip expensive rebuild
+      return;
+    }
+
     // Create new field configs
     const newFields: ParentFieldConfig[] = fieldNames.map(name => {
       // Try to preserve existing config if field already exists

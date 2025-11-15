@@ -1,1 +1,175 @@
 /* Relation Explorer Plugin Styles */
+
+/* ============================================
+   Relation Tree Styles
+   ============================================ */
+
+/* Container */
+.relation-tree-container {
+	padding: 8px 0;
+	font-size: var(--font-ui-small);
+	line-height: 1.5;
+}
+
+/* Node Container */
+.relation-tree-node {
+	position: relative;
+}
+
+/* Node Content (single line with file info) */
+.relation-tree-node-content {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	padding: 2px 4px;
+	padding-left: calc(var(--tree-depth, 0) * 20px + 4px);
+	border-radius: 4px;
+	transition: background-color 0.1s ease;
+}
+
+.relation-tree-node-content:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+/* Collapse Toggle */
+.relation-tree-toggle {
+	cursor: pointer;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 16px;
+	height: 16px;
+	color: var(--text-muted);
+	transition: transform 0.15s ease;
+	flex-shrink: 0;
+}
+
+.relation-tree-toggle:hover {
+	color: var(--text-normal);
+}
+
+.relation-tree-toggle:focus {
+	outline: 2px solid var(--background-modifier-border-focus);
+	outline-offset: 2px;
+	border-radius: 2px;
+}
+
+/* Toggle Spacer (when no toggle needed) */
+.relation-tree-toggle-spacer {
+	width: 16px;
+	height: 16px;
+	flex-shrink: 0;
+}
+
+/* File Icon */
+.relation-tree-icon {
+	display: inline-flex;
+	align-items: center;
+	color: var(--text-muted);
+	flex-shrink: 0;
+}
+
+/* File Name */
+.relation-tree-name {
+	color: var(--text-normal);
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.relation-tree-name-clickable {
+	cursor: pointer;
+	color: var(--text-accent);
+}
+
+.relation-tree-name-clickable:hover {
+	text-decoration: underline;
+}
+
+/* Cycle Indicator */
+.relation-tree-cycle-indicator {
+	display: inline-flex;
+	align-items: center;
+	color: var(--text-warning);
+	flex-shrink: 0;
+	margin-left: 4px;
+}
+
+.relation-tree-cycle-indicator svg {
+	fill: var(--background-warning);
+}
+
+/* Depth Indicator */
+.relation-tree-depth-indicator {
+	color: var(--text-faint);
+	font-size: 0.85em;
+	margin-left: 4px;
+	font-family: var(--font-monospace);
+}
+
+/* Children Container */
+.relation-tree-children {
+	overflow: hidden;
+	transition: max-height 0.2s ease, opacity 0.2s ease;
+	max-height: 10000px;
+	opacity: 1;
+}
+
+.relation-tree-children.relation-tree-collapsed {
+	max-height: 0;
+	opacity: 0;
+}
+
+/* Depth Limit Warning */
+.relation-tree-depth-limit {
+	padding: 4px 8px;
+	margin-left: calc(var(--tree-depth, 0) * 20px + 24px);
+	color: var(--text-muted);
+	font-style: italic;
+	font-size: 0.9em;
+}
+
+/* Theme-specific adjustments */
+.theme-dark .relation-tree-node-content:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+.theme-light .relation-tree-node-content:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+/* Accessibility - Focus Indicators */
+.relation-tree-name-clickable:focus-visible {
+	outline: 2px solid var(--background-modifier-border-focus);
+	outline-offset: 2px;
+	border-radius: 2px;
+}
+
+/* Compact Mode (optional variant) */
+.relation-tree-container.compact .relation-tree-node-content {
+	padding: 1px 2px;
+	font-size: 0.9em;
+}
+
+.relation-tree-container.compact .relation-tree-node-content {
+	padding-left: calc(var(--tree-depth, 0) * 12px + 2px);
+}
+
+/* Print Styles */
+@media print {
+	.relation-tree-toggle {
+		display: none;
+	}
+
+	.relation-tree-children.relation-tree-collapsed {
+		max-height: none;
+		opacity: 1;
+	}
+
+	.relation-tree-name-clickable {
+		color: var(--text-normal);
+		text-decoration: none;
+	}
+}

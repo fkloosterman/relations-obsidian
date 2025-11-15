@@ -162,20 +162,9 @@ export class RelationSidebarView extends ItemView {
 
 		const header = this.headerContainer.createDiv('relation-sidebar-header');
 
-		// Title and controls row
-		const titleRow = header.createDiv('relation-sidebar-title-row');
-
-		const title = titleRow.createDiv('relation-sidebar-title');
+		// Title
+		const title = header.createDiv('relation-sidebar-title');
 		title.setText('Relation Explorer');
-
-		// Pin button
-		const controls = titleRow.createDiv('relation-sidebar-controls');
-		const pinButton = controls.createDiv('relation-sidebar-pin-button');
-		this.updatePinButton(pinButton);
-
-		pinButton.addEventListener('click', () => {
-			this.togglePin();
-		});
 
 		// Parent field selector (only shown if multiple fields)
 		if (this.plugin.settings.parentFields.length > 1) {
@@ -231,9 +220,7 @@ export class RelationSidebarView extends ItemView {
 		} else {
 			this.pin();
 		}
-
-		// Update header to refresh pin button state
-		this.createHeader();
+		// Note: pin() and unpin() already call updateView() which refreshes everything
 	}
 
 	/**
@@ -401,6 +388,9 @@ export class RelationSidebarView extends ItemView {
 				return;
 			}
 
+			// Render reference note header (current file with pin button)
+			this.renderReferenceNote(file);
+
 			// Render ancestors section
 			if (fieldConfig.ancestors.visible) {
 				this.renderSection('ancestors', file, fieldConfig, engine, graph);
@@ -420,6 +410,31 @@ export class RelationSidebarView extends ItemView {
 			console.error('[Relation Explorer] Error rendering tree:', error);
 			this.showErrorState(error);
 		}
+	}
+
+	/**
+	 * Renders the reference note header with pin button.
+	 */
+	private renderReferenceNote(file: TFile): void {
+		const referenceContainer = this.contentContainer.createDiv('relation-reference-note');
+
+		const nameContainer = referenceContainer.createDiv('relation-reference-note-content');
+
+		// File icon
+		const icon = nameContainer.createDiv('relation-reference-note-icon');
+		setIcon(icon, 'file');
+
+		// File name
+		const name = nameContainer.createDiv('relation-reference-note-name');
+		name.setText(file.basename);
+
+		// Pin button
+		const pinButton = referenceContainer.createDiv('relation-sidebar-pin-button');
+		this.updatePinButton(pinButton);
+
+		pinButton.addEventListener('click', () => {
+			this.togglePin();
+		});
 	}
 
 	/**
@@ -474,7 +489,10 @@ export class RelationSidebarView extends ItemView {
 
 			// Check if tree has any children (ancestors/descendants exist)
 			if (tree && tree.children && tree.children.length > 0) {
-				this.renderer.render(tree, content);
+				// Render only the children, not the root node (current file)
+				tree.children.forEach(childNode => {
+					this.renderer.render(childNode, content);
+				});
 			} else {
 				// Show empty message for this section
 				const emptyMessage = content.createDiv('relation-section-empty');

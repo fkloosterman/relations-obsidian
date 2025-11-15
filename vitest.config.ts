@@ -9,7 +9,7 @@ export default defineConfig({
     include: ['tests/**/*.test.ts'],
     exclude: ['node_modules', 'tests/integration/**'],
     coverage: {
-      provider: 'istanbul',
+      provider: 'v8',
       reporter: ['text', 'json', 'html'],
       exclude: [
         'node_modules/**',

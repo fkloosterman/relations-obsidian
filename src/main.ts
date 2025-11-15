@@ -1,4 +1,4 @@
-import { App, Plugin, PluginSettingTab, Setting, TFile } from 'obsidian';
+import { App, Plugin, PluginSettingTab, Setting, TFile, TAbstractFile } from 'obsidian';
 import { RelationGraph } from './relation-graph';
 
 interface ParentRelationSettings {
@@ -23,8 +23,28 @@ export default class ParentRelationPlugin extends Plugin {
 
     this.addSettingTab(new ParentRelationSettingTab(this.app, this));
 
-    this.registerEvent(this.app.metadataCache.on('changed', () => this.relationGraph.build()));
-    this.registerEvent(this.app.vault.on('rename', () => this.relationGraph.build()));
+    // Use incremental updates for better performance
+    this.registerEvent(
+      this.app.metadataCache.on('changed', (file: TFile) => {
+        this.relationGraph.updateNode(file);
+      })
+    );
+
+    this.registerEvent(
+      this.app.vault.on('rename', (file: TAbstractFile, oldPath: string) => {
+        if (file instanceof TFile) {
+          this.relationGraph.renameNode(file, oldPath);
+        }
+      })
+    );
+
+    this.registerEvent(
+      this.app.vault.on('delete', (file: TAbstractFile) => {
+        if (file instanceof TFile) {
+          this.relationGraph.removeNode(file);
+        }
+      })
+    );
 
     console.log('Parent Relation Explorer loaded');
   }
@@ -65,6 +85,8 @@ class ParentRelationSettingTab extends PluginSettingTab {
         .onChange(async value => {
           this.plugin.settings.parentField = value;
           await this.plugin.saveSettings();
+          // Recreate graph with new parent field
+          this.plugin.relationGraph = new RelationGraph(this.app, value);
           this.plugin.relationGraph.build();
         })
       );

@@ -3,15 +3,22 @@
   "version": "0.0.1",
   "description": "Obsidian plugin for visualizing parent-child note relationships.",
   "main": "main.js",
+  "type": "module",
   "scripts": {
     "dev": "rollup -c -w",
     "build": "rollup -c",
-    "version": "node scripts/version.js"
+    "version": "node scripts/version.js",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "test:ui": "vitest --ui"
   },
   "devDependencies": {
+    "@types/node": "^24.10.1",
+    "@vitest/ui": "^4.0.9",
     "obsidian": "latest",
     "rollup": "^3.0.0",
     "rollup-plugin-typescript2": "^0.31.1",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "vitest": "^4.0.9"
   }
 }

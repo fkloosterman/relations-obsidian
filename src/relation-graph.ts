@@ -1,5 +1,6 @@
 import { App, TFile } from 'obsidian';
 import { CycleDetector, CycleInfo } from './cycle-detector';
+import { GraphValidator, DiagnosticInfo } from './graph-validator';
 
 export interface NodeInfo {
   file: TFile;
@@ -10,7 +11,8 @@ export interface NodeInfo {
 export class RelationGraph {
   private graph = new Map<string, NodeInfo>();
   private cycleDetector!: CycleDetector;
-  
+  private graphValidator!: GraphValidator;
+
   constructor(private app: App, private parentField: string) {}
 
   build() {
@@ -29,8 +31,9 @@ export class RelationGraph {
       });
     }
 
-    // Initialize cycle detector after graph is built
+    // Initialize cycle detector and validator after graph is built
     this.cycleDetector = new CycleDetector(this);
+    this.graphValidator = new GraphValidator(this, this.cycleDetector);
   }
 
   extractParentLinks(meta: any): TFile[] {
@@ -139,8 +142,9 @@ export class RelationGraph {
       });
     }
 
-    // Rebuild cycle detector (fast operation)
+    // Rebuild cycle detector and validator (fast operation)
     this.cycleDetector = new CycleDetector(this);
+    this.graphValidator = new GraphValidator(this, this.cycleDetector);
   }
 
   /**
@@ -176,8 +180,9 @@ export class RelationGraph {
     // Remove from graph
     this.graph.delete(file.path);
 
-    // Rebuild cycle detector
+    // Rebuild cycle detector and validator
     this.cycleDetector = new CycleDetector(this);
+    this.graphValidator = new GraphValidator(this, this.cycleDetector);
   }
 
   /**
@@ -220,7 +225,59 @@ export class RelationGraph {
       }
     });
 
-    // Rebuild cycle detector
+    // Rebuild cycle detector and validator
     this.cycleDetector = new CycleDetector(this);
+    this.graphValidator = new GraphValidator(this, this.cycleDetector);
+  }
+
+  /**
+   * Validates the graph and returns diagnostic information.
+   *
+   * @returns Complete diagnostic report
+   */
+  validateGraph(): DiagnosticInfo {
+    return this.graphValidator.validateGraph();
+  }
+
+  /**
+   * Gets diagnostic information about graph health.
+   *
+   * @returns Diagnostic report
+   */
+  getDiagnostics(): DiagnosticInfo {
+    return this.graphValidator.getDiagnostics();
+  }
+
+  /**
+   * Finds all cycles in the graph.
+   *
+   * @returns Array of all detected cycles
+   */
+  getAllCycles(): CycleInfo[] {
+    return this.graphValidator.getAllCycles();
+  }
+
+  /**
+   * Extracts raw parent link strings from frontmatter (for validation).
+   * Returns unresolved link text as it appears in frontmatter.
+   *
+   * @param file - The file to extract from
+   * @returns Array of parent link strings (unresolved)
+   */
+  extractParentLinksRaw(file: TFile): string[] {
+    const meta = this.app.metadataCache.getFileCache(file);
+    if (!meta?.frontmatter) return [];
+
+    const parentValue = meta.frontmatter[this.parentField];
+
+    if (!parentValue) return [];
+
+    // Handle array
+    if (Array.isArray(parentValue)) {
+      return parentValue.map(v => String(v).replace(/[\[\]]/g, ''));
+    }
+
+    // Handle single value
+    return [String(parentValue).replace(/[\[\]]/g, '')];
   }
 }

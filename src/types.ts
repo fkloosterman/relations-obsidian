@@ -116,3 +116,49 @@ export interface RelationshipQueryOptions {
   /** Whether to include cycle information in results */
   detectCycles?: boolean;
 }
+
+/**
+ * Configuration for a single section (ancestors, descendants, or siblings)
+ */
+export interface SectionConfig {
+  /** Display name for this section (e.g., "Parent Chain", "Children") */
+  displayName: string;
+
+  /** Whether this section is visible in the sidebar */
+  visible: boolean;
+
+  /** Whether this section is initially collapsed (only used if visible) */
+  collapsed: boolean;
+
+  /** Maximum depth to traverse (ancestors/descendants only) */
+  maxDepth?: number;
+
+  /** Initial unfold depth when rendering tree (ancestors/descendants only) */
+  initialDepth?: number;
+
+  /** Sort order for items (siblings only) */
+  sortOrder?: 'alphabetical' | 'created' | 'modified';
+
+  /** Whether to include the current file in results (siblings only) */
+  includeSelf?: boolean;
+}
+
+/**
+ * Configuration for a single parent field
+ */
+export interface ParentFieldConfig {
+  /** Field name in frontmatter (e.g., "parent", "project") */
+  name: string;
+
+  /** Optional friendly display name for UI (e.g., "Project Hierarchy") */
+  displayName?: string;
+
+  /** Ancestors section configuration */
+  ancestors: SectionConfig;
+
+  /** Descendants section configuration */
+  descendants: SectionConfig;
+
+  /** Siblings section configuration */
+  siblings: SectionConfig;
+}

@@ -22,22 +22,23 @@ export enum SidebarDisplayMode {
  * Sidebar view state (persisted across sessions)
  */
 export interface SidebarViewState {
-	/** Current display mode */
-	mode: SidebarDisplayMode;
+	/** Currently selected parent field name */
+	selectedParentField: string;
 
-	/** Whether the view is pinned to a specific file */
-	pinned: boolean;
+	/** Pin state per parent field (fieldName -> filePath) */
+	pinnedFiles: Record<string, string>;
 
-	/** Path of pinned file (if pinned) */
-	pinnedFilePath?: string;
+	/** Collapsed sections per parent field */
+	collapsedSections: Record<string, string[]>;  // fieldName -> ['ancestors', 'descendants', 'siblings']
 }
 
 /**
  * Default view state
  */
 const DEFAULT_VIEW_STATE: SidebarViewState = {
-	mode: SidebarDisplayMode.ANCESTORS,
-	pinned: false
+	selectedParentField: 'parent',
+	pinnedFiles: {},
+	collapsedSections: {}
 };
 
 /**

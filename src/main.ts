@@ -3,54 +3,121 @@ import { RelationGraph } from './relation-graph';
 import { RelationshipEngine } from './relationship-engine';
 import { DiagnosticSeverity } from './graph-validator';
 import { VIEW_TYPE_RELATION_SIDEBAR, RelationSidebarView } from './sidebar-view';
+import { FrontmatterCache } from './frontmatter-cache';
 import {
   AncestorQueryResult,
   DescendantQueryResult,
   SiblingQueryResult,
   CousinQueryResult,
   FullLineageResult,
-  RelationshipQueryOptions
+  RelationshipQueryOptions,
+  ParentFieldConfig,
+  SectionConfig
 } from './types';
 
-interface ParentRelationSettings {
-  parentField: string;
-  maxDepth: number;
+/**
+ * Plugin settings with multi-parent-field support
+ */
+export interface ParentRelationSettings {
+  /** Array of configured parent fields */
+  parentFields: ParentFieldConfig[];
+
+  /** Which parent field to show by default when opening sidebar */
+  defaultParentField: string;
+
+  /** UI style preference: 'auto', 'segmented', or 'dropdown' */
+  uiStyle: 'auto' | 'segmented' | 'dropdown';
+
+  /** Diagnostic mode toggle */
   diagnosticMode: boolean;
 }
 
-const DEFAULT_SETTINGS: ParentRelationSettings = {
-  parentField: 'parent',
+const DEFAULT_SECTION_CONFIG: SectionConfig = {
+  displayName: '',  // Will be set per section type
+  visible: true,
+  collapsed: false,
   maxDepth: 5,
+  initialDepth: 2,
+  sortOrder: 'alphabetical',
+  includeSelf: false
+};
+
+const DEFAULT_PARENT_FIELD_CONFIG: ParentFieldConfig = {
+  name: 'parent',
+  displayName: 'Parent',
+  ancestors: {
+    ...DEFAULT_SECTION_CONFIG,
+    displayName: 'Ancestors',
+    maxDepth: 5,
+    initialDepth: 2
+  },
+  descendants: {
+    ...DEFAULT_SECTION_CONFIG,
+    displayName: 'Descendants',
+    maxDepth: 5,
+    initialDepth: 2
+  },
+  siblings: {
+    ...DEFAULT_SECTION_CONFIG,
+    displayName: 'Siblings',
+    sortOrder: 'alphabetical',
+    includeSelf: false
+  }
+};
+
+const DEFAULT_SETTINGS: ParentRelationSettings = {
+  parentFields: [DEFAULT_PARENT_FIELD_CONFIG],
+  defaultParentField: 'parent',
+  uiStyle: 'auto',
   diagnosticMode: false
 };
 
 export default class ParentRelationPlugin extends Plugin {
   settings!: ParentRelationSettings;
-  relationGraph!: RelationGraph;
-  relationshipEngine!: RelationshipEngine;
+
+  // Multiple graphs (one per parent field)
+  relationGraphs!: Map<string, RelationGraph>;
+
+  // Multiple engines (one per graph)
+  relationshipEngines!: Map<string, RelationshipEngine>;
+
+  // Shared frontmatter cache
+  frontmatterCache!: FrontmatterCache;
 
   async onload() {
     await this.loadSettings();
 
-    this.relationGraph = new RelationGraph(
-      this.app,
-      this.settings.parentField,
-      this.settings.maxDepth
-    );
+    // Initialize frontmatter cache
+    this.frontmatterCache = new FrontmatterCache(this.app);
 
-    // Wait for metadata cache to be ready before building graph
+    // Initialize graphs and engines for each parent field
+    this.relationGraphs = new Map();
+    this.relationshipEngines = new Map();
+
+    this.settings.parentFields.forEach(fieldConfig => {
+      const graph = new RelationGraph(
+        this.app,
+        fieldConfig.name,
+        fieldConfig.ancestors.maxDepth ?? 5,
+        this.frontmatterCache
+      );
+
+      const engine = new RelationshipEngine(graph);
+
+      this.relationGraphs.set(fieldConfig.name, graph);
+      this.relationshipEngines.set(fieldConfig.name, engine);
+    });
+
+    // Wait for metadata cache to be ready before building graphs
     if (this.app.workspace.layoutReady) {
       // If workspace is already ready, build immediately
-      this.relationGraph.build();
+      this.buildAllGraphs();
     } else {
       // Otherwise, wait for layout-ready event
       this.app.workspace.onLayoutReady(() => {
-        this.relationGraph.build();
+        this.buildAllGraphs();
       });
     }
-
-    // Initialize relationship engine
-    this.relationshipEngine = new RelationshipEngine(this.relationGraph);
 
     // Register sidebar view
     this.registerView(
@@ -84,16 +151,20 @@ export default class ParentRelationPlugin extends Plugin {
     this.addSettingTab(new ParentRelationSettingTab(this.app, this));
 
     // Use incremental updates for better performance
+    // Update all graphs on file changes
     this.registerEvent(
       this.app.metadataCache.on('changed', (file: TFile) => {
-        this.relationGraph.updateNode(file);
+        this.frontmatterCache.invalidate(file);
+        this.relationGraphs.forEach(graph => graph.updateNode(file));
       })
     );
 
     this.registerEvent(
       this.app.vault.on('rename', (file: TAbstractFile, oldPath: string) => {
         if (file instanceof TFile) {
-          this.relationGraph.renameNode(file, oldPath);
+          this.frontmatterCache.invalidateByPath(oldPath);
+          this.frontmatterCache.invalidate(file);
+          this.relationGraphs.forEach(graph => graph.renameNode(file, oldPath));
         }
       })
     );
@@ -101,7 +172,8 @@ export default class ParentRelationPlugin extends Plugin {
     this.registerEvent(
       this.app.vault.on('delete', (file: TAbstractFile) => {
         if (file instanceof TFile) {
-          this.relationGraph.removeNode(file);
+          this.frontmatterCache.invalidate(file);
+          this.relationGraphs.forEach(graph => graph.removeNode(file));
         }
       })
     );
@@ -118,10 +190,37 @@ export default class ParentRelationPlugin extends Plugin {
     console.log('Parent Relation Explorer loaded');
   }
 
+  /**
+   * Builds all graphs.
+   */
+  private buildAllGraphs(): void {
+    this.relationGraphs.forEach(graph => graph.build());
+  }
+
+  /**
+   * Gets the graph for a specific parent field.
+   *
+   * @param fieldName - The parent field name
+   * @returns The RelationGraph instance, or undefined if not found
+   */
+  getGraphForField(fieldName: string): RelationGraph | undefined {
+    return this.relationGraphs.get(fieldName);
+  }
+
+  /**
+   * Gets the relationship engine for a specific parent field.
+   *
+   * @param fieldName - The parent field name
+   * @returns The RelationshipEngine instance, or undefined if not found
+   */
+  getEngineForField(fieldName: string): RelationshipEngine | undefined {
+    return this.relationshipEngines.get(fieldName);
+  }
+
   onunload() {
     // Detach sidebar views
     this.app.workspace.detachLeavesOfType(VIEW_TYPE_RELATION_SIDEBAR);
-    
+
     console.log('Parent Relation Explorer unloaded');
   }
 
@@ -131,8 +230,13 @@ export default class ParentRelationPlugin extends Plugin {
 
   async saveSettings() {
     await this.saveData(this.settings);
-    // Update maxDepth in graph when settings change
-    this.relationGraph.setMaxDepth(this.settings.maxDepth);
+    // Update maxDepth in all graphs when settings change
+    this.settings.parentFields.forEach(fieldConfig => {
+      const graph = this.relationGraphs.get(fieldConfig.name);
+      if (graph) {
+        graph.setMaxDepth(fieldConfig.ancestors.maxDepth ?? 5);
+      }
+    });
   }
 
   /**
@@ -145,11 +249,14 @@ export default class ParentRelationPlugin extends Plugin {
   }
 
   /**
-   * Runs graph diagnostics and logs results.
+   * Runs graph diagnostics and logs results for all graphs.
    */
   runDiagnostics(): void {
-    const diagnostics = this.relationGraph.getDiagnostics();
-    this.logDiagnostics(diagnostics);
+    this.relationGraphs.forEach((graph, fieldName) => {
+      console.log(`[Relations] Diagnostics for field "${fieldName}":`);
+      const diagnostics = graph.getDiagnostics();
+      this.logDiagnostics(diagnostics);
+    });
   }
 
   /**

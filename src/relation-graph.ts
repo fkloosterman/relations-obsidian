@@ -1,6 +1,7 @@
 import { App, TFile } from 'obsidian';
 import { CycleDetector, CycleInfo } from './cycle-detector';
 import { GraphValidator, DiagnosticInfo } from './graph-validator';
+import { FrontmatterCache } from './frontmatter-cache';
 
 export interface NodeInfo {
   file: TFile;
@@ -13,9 +14,16 @@ export class RelationGraph {
   private cycleDetector!: CycleDetector;
   private graphValidator!: GraphValidator;
   private maxDepth: number;
+  private frontmatterCache: FrontmatterCache;
 
-  constructor(private app: App, private parentField: string, maxDepth: number = 5) {
+  constructor(
+    private app: App,
+    private parentField: string,
+    maxDepth: number = 5,
+    frontmatterCache: FrontmatterCache
+  ) {
     this.maxDepth = maxDepth;
+    this.frontmatterCache = frontmatterCache;
   }
 
   build() {
@@ -24,11 +32,7 @@ export class RelationGraph {
     this.graph.clear();
 
     files.forEach(file => {
-      const meta = this.app.metadataCache.getFileCache(file);
-      if (!meta) {
-        console.warn(`[RelationGraph] No metadata cache for ${file.path} - cache not ready yet`);
-      }
-      const parentLinks = this.extractParentLinks(meta, file);
+      const parentLinks = this.extractParentLinks(file);
       this.graph.set(file.path, { file, parents: parentLinks, children: [] });
     });
 
@@ -46,18 +50,34 @@ export class RelationGraph {
     this.graphValidator = new GraphValidator(this, this.cycleDetector);
   }
 
-  extractParentLinks(meta: any, file: TFile): TFile[] {
-    const field = meta?.frontmatter?.[this.parentField];
-    if (!field) return [];
-    const arr = Array.isArray(field) ? field : [field];
-    return arr.map(ref => this.resolveLink(ref, file.path)).filter(Boolean) as TFile[];
-  }
+  /**
+   * Extracts parent links from file metadata using the frontmatter cache.
+   *
+   * @param file - The file to extract parent links from
+   * @returns Array of parent files
+   */
+  private extractParentLinks(file: TFile): TFile[] {
+    // Use frontmatter cache instead of direct metadata access
+    const value = this.frontmatterCache.getFieldValue(file, this.parentField);
 
-  resolveLink(ref: string, sourcePath: string): TFile | null {
-    // Frontmatter values may include wiki-link brackets [[like this]]
-    // getFirstLinkpathDest expects the link text without brackets
-    const cleanRef = ref.replace(/[\[\]]/g, '');
-    return this.app.metadataCache.getFirstLinkpathDest(cleanRef, sourcePath) || null;
+    if (!value) return [];
+
+    const links = Array.isArray(value) ? value : [value];
+    const parentFiles: TFile[] = [];
+
+    for (const link of links) {
+      if (typeof link !== 'string') continue;
+
+      // Remove [[]] if present and get the link
+      const cleanLink = link.replace(/[\[\]]/g, '');
+      const linkedFile = this.app.metadataCache.getFirstLinkpathDest(cleanLink, file.path);
+
+      if (linkedFile) {
+        parentFiles.push(linkedFile);
+      }
+    }
+
+    return parentFiles;
   }
 
   getParents(file: TFile): TFile[] {
@@ -146,8 +166,7 @@ export class RelationGraph {
    * @param file - The file to update
    */
   updateNode(file: TFile): void {
-    const meta = this.app.metadataCache.getFileCache(file);
-    const newParents = this.extractParentLinks(meta, file);
+    const newParents = this.extractParentLinks(file);
 
     const existingNode = this.graph.get(file.path);
 

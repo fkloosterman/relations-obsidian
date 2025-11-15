@@ -1228,3 +1228,564 @@ describe('RelationshipEngine - getDescendants', () => {
     });
   });
 });
+
+/**
+ * Helper to create sibling structure with single parent
+ * @param parent - Parent node name
+ * @param children - Array of child node names
+ */
+function createSiblingStructure(
+  parent: string,
+  children: string[]
+): { graph: RelationGraph; files: Map<string, TFile> } {
+  const edges: [string, string][] = children.map(child => [child, parent]);
+  const graph = createMockGraph(edges);
+
+  // Build file map for easy access
+  const files = new Map<string, TFile>();
+  const graphInternal = (graph as any).graph;
+
+  [parent, ...children].forEach(name => {
+    const node = graphInternal.get(name);
+    if (node) {
+      files.set(name, node.file);
+    }
+  });
+
+  return { graph, files };
+}
+
+/**
+ * Helper to create multi-parent sibling structure
+ * @param structure - Map of parent to children
+ * @example createMultiParentStructure({ P1: ['A', 'B'], P2: ['A', 'C'] })
+ */
+function createMultiParentStructure(
+  structure: Record<string, string[]>
+): { graph: RelationGraph; files: Map<string, TFile> } {
+  const edges: [string, string][] = [];
+
+  for (const [parent, children] of Object.entries(structure)) {
+    for (const child of children) {
+      edges.push([child, parent]);
+    }
+  }
+
+  const graph = createMockGraph(edges);
+  const graphInternal = (graph as any).graph;
+
+  // Build file map with all unique nodes
+  const files = new Map<string, TFile>();
+  const allNodes = new Set<string>();
+
+  for (const [parent, children] of Object.entries(structure)) {
+    allNodes.add(parent);
+    children.forEach(child => allNodes.add(child));
+  }
+
+  allNodes.forEach(name => {
+    const node = graphInternal.get(name);
+    if (node) {
+      files.set(name, node.file);
+    }
+  });
+
+  return { graph, files };
+}
+
+describe('RelationshipEngine - getSiblings', () => {
+  describe('Single Parent Scenarios', () => {
+    it('should return siblings with single parent: P → A, B, C', () => {
+      // Setup: Parent P has children A, B, C
+      const { graph, files } = createSiblingStructure('P', ['A', 'B', 'C']);
+      const engine = new RelationshipEngine(graph);
+
+      const siblings = engine.getSiblings(files.get('A')!, false);
+
+      // Expect: [B, C]
+      // A's siblings are B and C (excluding self)
+      expect(siblings).toHaveLength(2);
+      const names = siblings.map(f => f.basename).sort();
+      expect(names).toEqual(['B', 'C']);
+    });
+
+    it('should include self when requested: P → A, B, C', () => {
+      // Setup: Parent P has children A, B, C
+      const { graph, files } = createSiblingStructure('P', ['A', 'B', 'C']);
+      const engine = new RelationshipEngine(graph);
+
+      const siblings = engine.getSiblings(files.get('A')!, true);
+
+      // Expect: [A, B, C]
+      // Including self in results
+      expect(siblings).toHaveLength(3);
+      const names = siblings.map(f => f.basename).sort();
+      expect(names).toEqual(['A', 'B', 'C']);
+    });
+
+    it('should return empty array for only child: P → A', () => {
+      // Setup: Parent P has only one child A
+      const { graph, files } = createSiblingStructure('P', ['A']);
+      const engine = new RelationshipEngine(graph);
+
+      const siblings = engine.getSiblings(files.get('A')!, false);
+
+      // Expect: []
+      // A has no siblings (only child)
+      expect(siblings).toHaveLength(0);
+    });
+
+    it('should return self for only child when including self: P → A', () => {
+      // Setup: Parent P has only one child A
+      const { graph, files } = createSiblingStructure('P', ['A']);
+      const engine = new RelationshipEngine(graph);
+
+      const siblings = engine.getSiblings(files.get('A')!, true);
+
+      // Expect: [A]
+      // Only child with includeSelf=true returns self
+      expect(siblings).toHaveLength(1);
+      expect(siblings[0].basename).toBe('A');
+    });
+
+    it('should handle many siblings: P → A, B, C, D, E, F', () => {
+      // Setup: Parent P has 6 children
+      const { graph, files } = createSiblingStructure('P', ['A', 'B', 'C', 'D', 'E', 'F']);
+      const engine = new RelationshipEngine(graph);
+
+      const siblings = engine.getSiblings(files.get('A')!, false);
+
+      // Expect: [B, C, D, E, F]
+      // All other children are siblings
+      expect(siblings).toHaveLength(5);
+      const names = siblings.map(f => f.basename).sort();
+      expect(names).toEqual(['B', 'C', 'D', 'E', 'F']);
+    });
+  });
+
+  describe('Multiple Parent Scenarios', () => {
+    it('should return union of siblings: P1 → A, B; P2 → A, C', () => {
+      // Setup:
+      //   P1 has children A, B
+      //   P2 has children A, C
+      //   A has two parents (P1 and P2)
+      const { graph, files } = createMultiParentStructure({
+        P1: ['A', 'B'],
+        P2: ['A', 'C']
+      });
+      const engine = new RelationshipEngine(graph);
+
+      const siblings = engine.getSiblings(files.get('A')!, false);
+
+      // Expect: [B, C]
+      // B is half-sibling via P1, C is half-sibling via P2
+      expect(siblings).toHaveLength(2);
+      const names = siblings.map(f => f.basename).sort();
+      expect(names).toEqual(['B', 'C']);
+    });
+
+    it('should deduplicate siblings from multiple parents: P1 → A, B; P2 → A, B', () => {
+      // Setup:
+      //   P1 has children A, B
+      //   P2 has children A, B
+      //   A and B are full siblings (share both parents)
+      const { graph, files } = createMultiParentStructure({
+        P1: ['A', 'B'],
+        P2: ['A', 'B']
+      });
+      const engine = new RelationshipEngine(graph);
+
+      const siblings = engine.getSiblings(files.get('A')!, false);
+
+      // Expect: [B]
+      // B appears only once even though reachable via two parents
+      expect(siblings).toHaveLength(1);
+      expect(siblings[0].basename).toBe('B');
+    });
+
+    it('should handle complex multi-parent structure', () => {
+      // Setup:
+      //   P1 → A, B, C
+      //   P2 → A, D, E
+      //   P3 → A, F
+      //   A has three parents
+      const { graph, files } = createMultiParentStructure({
+        P1: ['A', 'B', 'C'],
+        P2: ['A', 'D', 'E'],
+        P3: ['A', 'F']
+      });
+      const engine = new RelationshipEngine(graph);
+
+      const siblings = engine.getSiblings(files.get('A')!, false);
+
+      // Expect: [B, C, D, E, F]
+      // Union of all sibling sets
+      expect(siblings).toHaveLength(5);
+      const names = siblings.map(f => f.basename).sort();
+      expect(names).toEqual(['B', 'C', 'D', 'E', 'F']);
+    });
+
+    it('should handle overlapping sibling sets', () => {
+      // Setup:
+      //   P1 → A, B, C
+      //   P2 → A, C, D
+      //   C appears as sibling via both parents
+      const { graph, files } = createMultiParentStructure({
+        P1: ['A', 'B', 'C'],
+        P2: ['A', 'C', 'D']
+      });
+      const engine = new RelationshipEngine(graph);
+
+      const siblings = engine.getSiblings(files.get('A')!, false);
+
+      // Expect: [B, C, D]
+      // C appears only once despite being in both sets
+      expect(siblings).toHaveLength(3);
+      const names = siblings.map(f => f.basename).sort();
+      expect(names).toEqual(['B', 'C', 'D']);
+    });
+  });
+
+  describe('Root Nodes (No Parents)', () => {
+    it('should return empty array for root node', () => {
+      // Setup: A has no parents
+      const graph = createMockGraph([]);
+      const engine = new RelationshipEngine(graph);
+      const fileA = createMockFile('A', 'A');
+
+      const siblings = engine.getSiblings(fileA, false);
+
+      // Expect: []
+      // Root nodes have no siblings
+      expect(siblings).toHaveLength(0);
+    });
+
+    it('should return empty array for root node even with includeSelf', () => {
+      // Setup: A has no parents
+      const graph = createMockGraph([]);
+      const engine = new RelationshipEngine(graph);
+      const fileA = createMockFile('A', 'A');
+
+      const siblings = engine.getSiblings(fileA, true);
+
+      // Expect: []
+      // Root nodes have no siblings, includeSelf doesn't apply
+      expect(siblings).toHaveLength(0);
+    });
+  });
+
+  describe('Edge Cases', () => {
+    it('should handle parent with no other children', () => {
+      // Setup: P → A (only child)
+      const { graph, files } = createSiblingStructure('P', ['A']);
+      const engine = new RelationshipEngine(graph);
+
+      const siblings = engine.getSiblings(files.get('A')!, false);
+
+      // Expect: []
+      expect(siblings).toHaveLength(0);
+    });
+
+    it('should handle cyclical parent-child relationships', () => {
+      // Setup: A → B → C → B (cycle in graph)
+      // Edges: B has parent A, C has parent B, B has parent C
+      const graph = createMockGraph([
+        ['B', 'A'],
+        ['C', 'B'],
+        ['B', 'C']
+      ]);
+      const engine = new RelationshipEngine(graph);
+      const fileC = (graph as any).graph.get('C')!.file;
+
+      // Test: getSiblings(C)
+      const siblings = engine.getSiblings(fileC);
+
+      // Expect: Should handle gracefully
+      // C's parent is B. B's children are [C] (C has B as parent).
+      // B itself has parents A and C, but that doesn't make B a child of B.
+      // So C has no siblings (it's the only child of B).
+      expect(siblings).toBeDefined();
+      expect(siblings).toHaveLength(0);
+    });
+
+    it('should maintain consistent ordering across calls', () => {
+      // Setup: P → A, B, C, D
+      const { graph, files } = createSiblingStructure('P', ['A', 'B', 'C', 'D']);
+      const engine = new RelationshipEngine(graph);
+
+      // Test: getSiblings(A) multiple times
+      const siblings1 = engine.getSiblings(files.get('A')!, false);
+      const siblings2 = engine.getSiblings(files.get('A')!, false);
+      const siblings3 = engine.getSiblings(files.get('A')!, false);
+
+      // Expect: Same order each time (deterministic)
+      const order1 = siblings1.map(f => f.basename).join(',');
+      const order2 = siblings2.map(f => f.basename).join(',');
+      const order3 = siblings3.map(f => f.basename).join(',');
+
+      expect(order1).toBe(order2);
+      expect(order2).toBe(order3);
+    });
+  });
+
+  describe('Self-inclusion Toggle', () => {
+    it('should exclude self by default', () => {
+      // Setup: P → A, B
+      const { graph, files } = createSiblingStructure('P', ['A', 'B']);
+      const engine = new RelationshipEngine(graph);
+
+      const siblings = engine.getSiblings(files.get('A')!);
+
+      // Expect: [B]
+      // Default includeSelf=false
+      expect(siblings).toHaveLength(1);
+      expect(siblings[0].basename).toBe('B');
+    });
+
+    it('should include self when explicitly true', () => {
+      // Setup: P → A, B
+      const { graph, files } = createSiblingStructure('P', ['A', 'B']);
+      const engine = new RelationshipEngine(graph);
+
+      const siblings = engine.getSiblings(files.get('A')!, true);
+
+      // Expect: [A, B]
+      // Explicit includeSelf=true
+      expect(siblings).toHaveLength(2);
+      const names = siblings.map(f => f.basename).sort();
+      expect(names).toEqual(['A', 'B']);
+    });
+
+    it('should exclude self when explicitly false', () => {
+      // Setup: P → A, B
+      const { graph, files } = createSiblingStructure('P', ['A', 'B']);
+      const engine = new RelationshipEngine(graph);
+
+      const siblings = engine.getSiblings(files.get('A')!, false);
+
+      // Expect: [B]
+      // Explicit includeSelf=false
+      expect(siblings).toHaveLength(1);
+      expect(siblings[0].basename).toBe('B');
+    });
+  });
+
+  describe('Deduplication', () => {
+    it('should not return duplicates', () => {
+      // Setup: Complex graph with multiple paths
+      const { graph, files } = createMultiParentStructure({
+        P1: ['A', 'B', 'C'],
+        P2: ['A', 'B', 'D'],
+        P3: ['A', 'C', 'D']
+      });
+      const engine = new RelationshipEngine(graph);
+
+      const siblings = engine.getSiblings(files.get('A')!);
+
+      // Expect: Each sibling appears exactly once
+      const paths = siblings.map(f => f.path);
+      const uniquePaths = new Set(paths);
+      expect(paths.length).toBe(uniquePaths.size);
+
+      // Expect: [B, C, D]
+      const names = siblings.map(f => f.basename).sort();
+      expect(names).toEqual(['B', 'C', 'D']);
+    });
+
+    it('should deduplicate when siblings share multiple parents', () => {
+      // Setup:
+      //   P1 → A, B, C
+      //   P2 → A, B, D
+      //   B is sibling via both P1 and P2
+      const { graph, files } = createMultiParentStructure({
+        P1: ['A', 'B', 'C'],
+        P2: ['A', 'B', 'D']
+      });
+      const engine = new RelationshipEngine(graph);
+
+      const siblings = engine.getSiblings(files.get('A')!, false);
+
+      // Expect: [B, C, D]
+      // B appears only once
+      expect(siblings).toHaveLength(3);
+      const names = siblings.map(f => f.basename).sort();
+      expect(names).toEqual(['B', 'C', 'D']);
+    });
+  });
+
+  describe('Integration with Existing Methods', () => {
+    it('should work with files that also have ancestors', () => {
+      // Setup: GP → P → A, B, C
+      const graph = createMockGraph([
+        ['P', 'GP'],
+        ['A', 'P'],
+        ['B', 'P'],
+        ['C', 'P']
+      ]);
+      const engine = new RelationshipEngine(graph);
+      const fileA = (graph as any).graph.get('A')!.file;
+
+      const siblings = engine.getSiblings(fileA);
+
+      // Expect: [B, C]
+      // Sibling computation independent of ancestors
+      expect(siblings).toHaveLength(2);
+      const names = siblings.map(f => f.basename).sort();
+      expect(names).toEqual(['B', 'C']);
+
+      // Verify ancestors still work
+      const ancestors = engine.getAncestors(fileA);
+      expect(ancestors).toHaveLength(2); // [[P], [GP]]
+    });
+
+    it('should work with files that also have descendants', () => {
+      // Setup: P → A, B; A → X, Y, Z
+      const graph = createMockGraph([
+        ['A', 'P'],
+        ['B', 'P'],
+        ['X', 'A'],
+        ['Y', 'A'],
+        ['Z', 'A']
+      ]);
+      const engine = new RelationshipEngine(graph);
+      const fileA = (graph as any).graph.get('A')!.file;
+
+      const siblings = engine.getSiblings(fileA);
+
+      // Expect: [B]
+      // Sibling computation independent of descendants
+      expect(siblings).toHaveLength(1);
+      expect(siblings[0].basename).toBe('B');
+
+      // Verify descendants still work
+      const descendants = engine.getDescendants(fileA);
+      expect(descendants).toHaveLength(1); // [[X, Y, Z]]
+      expect(descendants[0]).toHaveLength(3);
+    });
+
+    it('should work in graph with cycles', () => {
+      // Setup: Complex graph with cycles
+      const graph = createMockGraph([
+        ['A', 'P'],
+        ['B', 'P'],
+        ['C', 'P'],
+        ['P', 'B'] // Cycle: B has parent P, P has parent B
+      ]);
+      const engine = new RelationshipEngine(graph);
+      const fileA = (graph as any).graph.get('A')!.file;
+
+      const siblings = engine.getSiblings(fileA);
+
+      // Expect: Correct siblings without infinite loops
+      // Sibling method doesn't traverse, so cycles don't affect it
+      expect(siblings).toBeDefined();
+      const names = siblings.map(f => f.basename).sort();
+      expect(names).toEqual(['B', 'C']);
+    });
+  });
+
+  describe('Symmetry Tests', () => {
+    it('should be symmetric: if A is sibling of B, B is sibling of A', () => {
+      // Setup: P → A, B, C
+      const { graph, files } = createSiblingStructure('P', ['A', 'B', 'C']);
+      const engine = new RelationshipEngine(graph);
+
+      const siblingsOfA = engine.getSiblings(files.get('A')!, false);
+      const siblingsOfB = engine.getSiblings(files.get('B')!, false);
+
+      // A's siblings should include B
+      expect(siblingsOfA.some(f => f.basename === 'B')).toBe(true);
+
+      // B's siblings should include A
+      expect(siblingsOfB.some(f => f.basename === 'A')).toBe(true);
+    });
+
+    it('should have consistent sibling sets', () => {
+      // Setup: P → A, B, C, D
+      const { graph, files } = createSiblingStructure('P', ['A', 'B', 'C', 'D']);
+      const engine = new RelationshipEngine(graph);
+
+      // Get siblings for each child
+      const siblingsOfA = engine.getSiblings(files.get('A')!, false);
+      const siblingsOfB = engine.getSiblings(files.get('B')!, false);
+      const siblingsOfC = engine.getSiblings(files.get('C')!, false);
+      const siblingsOfD = engine.getSiblings(files.get('D')!, false);
+
+      // All should have same count (3 siblings each)
+      expect(siblingsOfA).toHaveLength(3);
+      expect(siblingsOfB).toHaveLength(3);
+      expect(siblingsOfC).toHaveLength(3);
+      expect(siblingsOfD).toHaveLength(3);
+
+      // Each sibling set should contain the others
+      const namesA = siblingsOfA.map(f => f.basename).sort();
+      const namesB = siblingsOfB.map(f => f.basename).sort();
+      const namesC = siblingsOfC.map(f => f.basename).sort();
+      const namesD = siblingsOfD.map(f => f.basename).sort();
+
+      expect(namesA).toEqual(['B', 'C', 'D']);
+      expect(namesB).toEqual(['A', 'C', 'D']);
+      expect(namesC).toEqual(['A', 'B', 'D']);
+      expect(namesD).toEqual(['A', 'B', 'C']);
+    });
+  });
+
+  describe('Performance', () => {
+    it('should handle single parent with many children', () => {
+      // Setup: Parent with 100 children
+      const children = Array.from({ length: 100 }, (_, i) => `C${i}`);
+      const { graph, files } = createSiblingStructure('P', children);
+      const engine = new RelationshipEngine(graph);
+
+      const startTime = Date.now();
+      const siblings = engine.getSiblings(files.get('C0')!, false);
+      const endTime = Date.now();
+
+      // Should complete quickly
+      const duration = endTime - startTime;
+      expect(duration).toBeLessThan(100); // Less than 100ms
+
+      // Expect: 99 siblings (all except C0 itself)
+      expect(siblings).toHaveLength(99);
+    });
+
+    it('should handle many parents with many children', () => {
+      // Setup: A has 10 parents, each with 10 children
+      const structure: Record<string, string[]> = {};
+      const allChildren = new Set<string>();
+      allChildren.add('A');
+
+      for (let i = 0; i < 10; i++) {
+        const parent = `P${i}`;
+        const children = ['A'];
+
+        for (let j = 0; j < 9; j++) {
+          const child = `C${i}_${j}`;
+          children.push(child);
+          allChildren.add(child);
+        }
+
+        structure[parent] = children;
+      }
+
+      const { graph, files } = createMultiParentStructure(structure);
+      const engine = new RelationshipEngine(graph);
+
+      const startTime = Date.now();
+      const siblings = engine.getSiblings(files.get('A')!, false);
+      const endTime = Date.now();
+
+      // Should complete quickly
+      const duration = endTime - startTime;
+      expect(duration).toBeLessThan(100); // Less than 100ms
+
+      // Expect: 90 unique siblings (10 parents × 9 children each)
+      expect(siblings).toHaveLength(90);
+
+      // Verify no duplicates
+      const paths = siblings.map(f => f.path);
+      const uniquePaths = new Set(paths);
+      expect(paths.length).toBe(uniquePaths.size);
+    });
+  });
+});

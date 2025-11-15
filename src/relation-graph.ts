@@ -59,6 +59,17 @@ export class RelationGraph {
   }
 
   /**
+   * Gets a file by its path.
+   *
+   * @param path - The file path to look up
+   * @returns The TFile object if found, null otherwise
+   */
+  getFileByPath(path: string): TFile | null {
+    const node = this.graph.get(path);
+    return node?.file ?? null;
+  }
+
+  /**
    * Gets all files in the graph.
    *
    * @returns Array of all TFile objects in the graph

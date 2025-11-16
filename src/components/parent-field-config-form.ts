@@ -22,7 +22,8 @@ export class ParentFieldConfigForm {
   private onChange: (config: ParentFieldConfig) => void;
   private onRemove: () => void;
   private onDuplicate: () => void;
-  private collapsed: boolean = false;
+  private onCollapsedChange?: (collapsed: boolean) => void;
+  private collapsed: boolean = true;
   private formEl: HTMLElement | null = null;
 
   constructor(
@@ -30,13 +31,17 @@ export class ParentFieldConfigForm {
     config: ParentFieldConfig,
     onChange: (config: ParentFieldConfig) => void,
     onRemove: () => void,
-    onDuplicate: () => void
+    onDuplicate: () => void,
+    initialCollapsed: boolean = true,
+    onCollapsedChange?: (collapsed: boolean) => void
   ) {
     this.containerEl = containerEl;
     this.config = config;
     this.onChange = onChange;
     this.onRemove = onRemove;
     this.onDuplicate = onDuplicate;
+    this.collapsed = initialCollapsed;
+    this.onCollapsedChange = onCollapsedChange;
   }
 
   /**
@@ -70,7 +75,10 @@ export class ParentFieldConfigForm {
     // Collapse icon
     const collapseIcon = headerEl.createSpan('collapse-icon');
     collapseIcon.setText(this.collapsed ? '▶' : '▼');
-    collapseIcon.onclick = () => this.toggleCollapse();
+    collapseIcon.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.toggleCollapse();
+    });
 
     // Title
     const titleEl = headerEl.createSpan('config-title');
@@ -290,6 +298,11 @@ export class ParentFieldConfigForm {
         bodyEl.style.display = 'block';
         icon.setText('▼');
       }
+    }
+
+    // Notify parent of collapsed state change
+    if (this.onCollapsedChange) {
+      this.onCollapsedChange(this.collapsed);
     }
   }
 

@@ -644,6 +644,7 @@ export default class ParentRelationPlugin extends Plugin {
 class ParentRelationSettingTab extends PluginSettingTab {
   plugin: ParentRelationPlugin;
   private configForms: ParentFieldConfigForm[] = [];
+  private fieldCollapsedStates: Map<string, boolean> = new Map();
 
   constructor(app: App, plugin: ParentRelationPlugin) {
     super(app, plugin);
@@ -757,19 +758,6 @@ class ParentRelationSettingTab extends PluginSettingTab {
           }
         });
       });
-
-    // Show descriptions of available presets
-    const descEl = section.createDiv('preset-descriptions');
-    descEl.createEl('p', {
-      text: 'Available presets:',
-      cls: 'setting-item-description'
-    });
-    presetMetadata.forEach(({ name, description }) => {
-      descEl.createEl('p', {
-        text: `• ${name}: ${description}`,
-        cls: 'setting-item-description'
-      });
-    });
   }
 
   /**
@@ -828,12 +816,15 @@ class ParentRelationSettingTab extends PluginSettingTab {
 
     this.plugin.settings.parentFields.forEach((config, index) => {
       const formContainer = fieldsContainer.createDiv();
+      const initialCollapsed = this.fieldCollapsedStates.get(config.name) ?? true;
       const form = new ParentFieldConfigForm(
         formContainer,
         config,
         (updated) => this.updateFieldConfig(index, updated),
         () => this.removeFieldConfig(index),
-        () => this.duplicateFieldConfig(index)
+        () => this.duplicateFieldConfig(index),
+        initialCollapsed,
+        (collapsed) => this.fieldCollapsedStates.set(config.name, collapsed)
       );
       form.render();
       this.configForms.push(form);
@@ -932,6 +923,9 @@ class ParentRelationSettingTab extends PluginSettingTab {
     const fieldName = this.plugin.settings.parentFields[index].name;
     this.plugin.settings.parentFields.splice(index, 1);
 
+    // Remove the collapsed state for this field
+    this.fieldCollapsedStates.delete(fieldName);
+
     // If we removed the default field, reset to first field
     if (this.plugin.settings.defaultParentField === fieldName) {
       this.plugin.settings.defaultParentField = this.plugin.settings.parentFields[0].name;
@@ -952,6 +946,12 @@ class ParentRelationSettingTab extends PluginSettingTab {
     // Make the name unique
     duplicate.name = `${original.name}_copy`;
     duplicate.displayName = `${original.displayName || original.name} (Copy)`;
+
+    // Copy the collapsed state from the original field
+    const originalCollapsedState = this.fieldCollapsedStates.get(original.name);
+    if (originalCollapsedState !== undefined) {
+      this.fieldCollapsedStates.set(duplicate.name, originalCollapsedState);
+    }
 
     this.plugin.settings.parentFields.push(duplicate);
     await this.plugin.saveSettings();

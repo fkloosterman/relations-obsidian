@@ -12,65 +12,10 @@ import {
   FullLineageResult,
   RelationshipQueryOptions,
   ParentFieldConfig,
-  SectionConfig
+  SectionConfig,
+  ParentRelationSettings,
+  DEFAULT_SETTINGS
 } from './types';
-
-/**
- * Plugin settings with multi-parent-field support
- */
-export interface ParentRelationSettings {
-  /** Array of configured parent fields */
-  parentFields: ParentFieldConfig[];
-
-  /** Which parent field to show by default when opening sidebar */
-  defaultParentField: string;
-
-  /** UI style preference: 'auto', 'segmented', or 'dropdown' */
-  uiStyle: 'auto' | 'segmented' | 'dropdown';
-
-  /** Diagnostic mode toggle */
-  diagnosticMode: boolean;
-}
-
-const DEFAULT_SECTION_CONFIG: SectionConfig = {
-  displayName: '',  // Will be set per section type
-  visible: true,
-  collapsed: false,
-  maxDepth: 5,
-  initialDepth: 2,
-  sortOrder: 'alphabetical',
-  includeSelf: false
-};
-
-const DEFAULT_PARENT_FIELD_CONFIG: ParentFieldConfig = {
-  name: 'parent',
-  displayName: 'Parent',
-  ancestors: {
-    ...DEFAULT_SECTION_CONFIG,
-    displayName: 'Ancestors',
-    maxDepth: 5,
-    initialDepth: 2
-  },
-  descendants: {
-    ...DEFAULT_SECTION_CONFIG,
-    displayName: 'Descendants',
-    maxDepth: 5,
-    initialDepth: 2
-  },
-  siblings: {
-    ...DEFAULT_SECTION_CONFIG,
-    displayName: 'Siblings',
-    sortOrder: 'alphabetical',
-    includeSelf: false
-  }
-};
-
-const DEFAULT_SETTINGS: ParentRelationSettings = {
-  parentFields: [DEFAULT_PARENT_FIELD_CONFIG],
-  defaultParentField: 'parent',
-  uiStyle: 'auto',
-  diagnosticMode: false
-};
 
 export default class ParentRelationPlugin extends Plugin {
   settings!: ParentRelationSettings;

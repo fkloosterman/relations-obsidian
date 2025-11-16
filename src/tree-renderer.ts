@@ -693,8 +693,30 @@ export class TreeRenderer {
 		console.log('[TreeRenderer] collapseAllChildren called for:', filePath);
 		console.log('[TreeRenderer] nodeStates size:', this.nodeStates.size);
 
-		// Recursively collapse all descendants (but not the node itself)
+		const state = this.nodeStates.get(filePath);
+		if (!state) {
+			console.warn('[TreeRenderer] No state found for:', filePath);
+			return;
+		}
+
+		// First, recursively collapse all descendants (so they're collapsed when re-expanded)
 		this.collapseAllDescendants(filePath);
+
+		// Then collapse the node itself (this hides all its children)
+		if (!state.collapsed) {
+			state.collapsed = true;
+			state.element.classList.add(`${this.options.cssPrefix}-collapsed`);
+
+			// Update toggle icon
+			const toggleEl = state.element.parentElement?.querySelector(
+				`[data-file-path="${filePath}"]`
+			) as HTMLElement;
+			if (toggleEl) {
+				this.updateToggleIcon(toggleEl, true);
+				toggleEl.setAttribute('aria-expanded', 'false');
+			}
+			console.log('[TreeRenderer] Collapsed node itself:', filePath);
+		}
 	}
 
 	/**

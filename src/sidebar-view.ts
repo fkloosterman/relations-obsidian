@@ -270,10 +270,10 @@ export class RelationSidebarView extends ItemView {
 		// Update when file content changes (metadata)
 		this.registerEvent(
 			this.app.metadataCache.on('changed', (file: TFile) => {
-				// Only update if the changed file is currently displayed
-				if (this.currentFile && file.path === this.currentFile.path) {
-					this.updateView();
-				}
+				// Always update when metadata changes, since any file's parent field
+				// change could affect the relationships of the currently displayed file
+				// (e.g., a new descendant was added, or a sibling's parent changed)
+				this.updateView();
 			})
 		);
 

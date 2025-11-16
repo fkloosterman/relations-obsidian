@@ -4,10 +4,14 @@ An Obsidian plugin for visualizing parent-child relationships between notes base
 
 ## Features
 
-- **Flexible Relationship Tracking**: Define custom frontmatter fields to establish parent-child relationships between notes
-- **Automatic Graph Building**: Automatically builds and maintains a relationship graph as you create and modify notes
+- **Multiple Parent Fields**: Track different types of hierarchies simultaneously (e.g., parent, project, category)
+- **Interactive Sidebar**: View ancestors, descendants, and siblings for the current note
+- **Field Switching**: Easily switch between different parent fields using a modern UI selector
+- **Per-Field Pinning**: Pin the sidebar to specific notes independently for each parent field
+- **Flexible Relationship Tracking**: Define custom frontmatter fields to establish parent-child relationships
+- **Automatic Graph Building**: Automatically builds and maintains relationship graphs as you create and modify notes
 - **Cycle Detection**: Detects and reports circular relationships to prevent infinite traversals
-- **Configurable Settings**: Customize the parent field name and maximum traversal depth
+- **Configurable Settings**: Customize parent fields, UI style, and traversal depth
 
 ## Installation
 
@@ -40,12 +44,37 @@ parent:
 ---
 ```
 
+### Multiple Parent Fields
+
+You can track multiple types of hierarchies by using different frontmatter fields:
+
+```yaml
+---
+parent: "[[Parent Note]]"
+project: "[[Project A]]"
+category: "[[Category 1]]"
+---
+```
+
+The plugin will maintain separate relationship graphs for each field, allowing you to view different hierarchies of the same notes.
+
+### Using the Sidebar
+
+1. Open the Relation Explorer sidebar via the ribbon icon or command palette
+2. The sidebar shows relationships for the current note
+3. If you have multiple parent fields configured, use the field selector to switch between them
+4. Click the pin icon to keep the sidebar focused on a specific note
+5. Each section (Ancestors, Descendants, Siblings) can be expanded/collapsed independently
+
 ### Configuration
 
 Access plugin settings via Settings → Relation Explorer:
 
-- **Parent Field**: The frontmatter field name used to identify parent links (default: `parent`)
+- **Parent Fields**: Comma-separated list of frontmatter fields to track (e.g., "parent, project, category")
+- **Default Parent Field**: Which field to show by default when opening the sidebar
+- **UI Style**: How to display the field selector (Auto/Segmented Control/Dropdown)
 - **Max Depth**: Maximum depth for relationship tree traversal (default: `5`)
+- **Diagnostic Mode**: Enable verbose logging for debugging
 
 ## How It Works
 
@@ -91,6 +120,32 @@ const plugin = this.app.plugins.getPlugin('relations-obsidian');
 
 // Get the current active file
 const currentFile = this.app.workspace.getActiveFile();
+
+// Access graphs and engines for specific parent fields
+const projectGraph = plugin.getGraphForField('project');
+const categoryEngine = plugin.getEngineForField('category');
+```
+
+### Multi-Field API
+
+The plugin supports querying different parent fields independently:
+
+```typescript
+// Get ancestors in the 'project' hierarchy
+const projectGraph = plugin.getGraphForField('project');
+const projectAncestors = projectGraph.getAncestors(currentFile);
+
+// Get descendants in the 'category' hierarchy
+const categoryGraph = plugin.getGraphForField('category');
+const categoryDescendants = categoryGraph.getDescendants(currentFile);
+```
+
+For backward compatibility, the default API methods use the configured default parent field:
+
+```typescript
+// Uses the default parent field
+const ancestors = plugin.getAncestors(currentFile);
+const descendants = plugin.getDescendants(currentFile);
 ```
 
 ### Quick Reference

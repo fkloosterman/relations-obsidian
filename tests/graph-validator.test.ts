@@ -471,7 +471,8 @@ describe('GraphValidator', () => {
 
       const mockApp2 = createMockApp(fileMetadata2, [fileB, fileC]);
 
-      const graph2 = new RelationGraph(mockApp2, 'parent');
+      const frontmatterCache2 = new FrontmatterCache(mockApp2);
+      const graph2 = new RelationGraph(mockApp2, 'parent', 5, frontmatterCache2);
       graph2.build();
 
       const diagnostics2 = graph2.getDiagnostics();

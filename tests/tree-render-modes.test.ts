@@ -73,7 +73,8 @@ function createMockGraph(): RelationGraph {
 	return {
 		detectCycle: vi.fn(() => null),
 		getParents: vi.fn(() => []),
-		getChildren: vi.fn(() => [])
+		getChildren: vi.fn(() => []),
+		supportsCycleDetection: vi.fn(() => true)
 	} as any;
 }
 
@@ -590,7 +591,8 @@ describe('Tree Rendering Modes', () => {
 					return null;
 				}),
 				getParents: vi.fn(() => []),
-				getChildren: vi.fn(() => [])
+				getChildren: vi.fn(() => []),
+				supportsCycleDetection: vi.fn(() => true)
 			} as any;
 
 			const metadataCache = createMockMetadataCache(new Map());

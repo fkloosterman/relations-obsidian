@@ -196,6 +196,10 @@ export class TreeRenderer {
 		toggle.classList.add(`${this.options.cssPrefix}-toggle`);
 		toggle.setAttribute('data-file-path', node.file.path);
 		toggle.setAttribute('title', `Toggle ${node.file.basename} children`);
+		toggle.setAttribute('role', 'button');
+		toggle.setAttribute('aria-label', 'Toggle children');
+		toggle.setAttribute('aria-expanded', String(!this.options.initiallyCollapsed));
+		toggle.setAttribute('tabindex', '0');
 
 		// Set initial icon
 		this.updateToggleIcon(toggle, this.options.initiallyCollapsed);
@@ -301,9 +305,9 @@ export class TreeRenderer {
 			const newLeaf = e.ctrlKey || e.metaKey;
 
 			if (newLeaf) {
-				await this.app.workspace.openLinkText(file.basename, '', 'split');
+				await this.app.workspace.openLinkText(file.path, '', 'split');
 			} else {
-				await this.app.workspace.getLeaf().openFile(file);
+				await this.app.workspace.openLinkText(file.path, '', false);
 			}
 		});
 
@@ -314,7 +318,7 @@ export class TreeRenderer {
 				source: 'relation-tree',
 				hoverParent: element,
 				targetEl: element,
-				linktext: file.basename,
+				linktext: file.path,
 			});
 		});
 	}

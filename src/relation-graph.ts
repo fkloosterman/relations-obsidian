@@ -151,12 +151,27 @@ export class RelationGraph {
   }
 
   /**
+   * Checks if the graph has cycle detection support initialized.
+   *
+   * @returns true if cycle detector is available
+   */
+  supportsCycleDetection(): boolean {
+    return !!this.cycleDetector;
+  }
+
+  /**
    * Checks if the graph contains any cycles.
    *
    * @returns true if any cycle exists in the graph
    */
-  supportsCycleDetection(): boolean {
-    return !!this.cycleDetector;
+  hasCycles(): boolean {
+    if (!this.cycleDetector) {
+      this.cycleDetector = new CycleDetector(this);
+    }
+    if (!this.graphValidator) {
+      this.graphValidator = new GraphValidator(this, this.cycleDetector);
+    }
+    return this.getAllCycles().length > 0;
   }
 
   /**

@@ -22,6 +22,12 @@ import {
 	buildCousinsTree,
 	TreeNode
 } from './tree-model';
+import {
+	buildFilterFunction,
+	countTreeNodes,
+	truncateTree,
+	FilterFunction
+} from './codeblock-filters';
 
 /**
  * Resolves a note reference to a TFile.
@@ -153,17 +159,35 @@ export class CodeblockProcessor {
 				return;
 			}
 
-			// Build tree based on type
+			// Build filter function from parameters
+			const filterFunction = buildFilterFunction(params, this.app);
+
+			// Build tree based on type (with filter)
 			const tree = this.buildTree(
 				params.type,
 				targetFile,
 				engine,
 				graph,
-				params
+				params,
+				filterFunction
 			);
 
+			// Apply max-nodes truncation if specified
+			let finalTree = tree;
+			let truncatedCount = 0;
+
+			if (params.maxNodes !== undefined && tree) {
+				const nodeCount = countTreeNodes(tree);
+
+				if (nodeCount > params.maxNodes) {
+					const result = truncateTree(tree, params.maxNodes);
+					finalTree = result.tree;
+					truncatedCount = result.truncatedCount;
+				}
+			}
+
 			// Render tree
-			this.renderTree(el, tree, params);
+			this.renderTree(el, finalTree, params, truncatedCount, filterFunction !== null);
 
 		} catch (error) {
 			if (error instanceof CodeblockValidationError) {
@@ -208,6 +232,7 @@ export class CodeblockProcessor {
 	 * @param engine - Relationship engine for the parent field
 	 * @param graph - Relation graph for the parent field
 	 * @param params - Codeblock parameters
+	 * @param filter - Optional filter function to apply to nodes
 	 * @returns Built tree node(s) or null
 	 */
 	private buildTree(
@@ -215,12 +240,14 @@ export class CodeblockProcessor {
 		file: TFile,
 		engine: any,
 		graph: any,
-		params: CodeblockParams
+		params: CodeblockParams,
+		filter: FilterFunction | null
 	): TreeNode | TreeNode[] | null {
 		const buildOptions = {
 			maxDepth: params.depth,
 			detectCycles: params.showCycles ?? true,
-			includeMetadata: true
+			includeMetadata: true,
+			filter: filter || undefined
 		};
 
 		switch (type) {
@@ -247,11 +274,15 @@ export class CodeblockProcessor {
 	 * @param container - Container element to render into
 	 * @param tree - Tree node(s) to render
 	 * @param params - Codeblock parameters for styling
+	 * @param truncatedCount - Number of nodes truncated (0 if none)
+	 * @param hasFilters - Whether filters are active
 	 */
 	private renderTree(
 		container: HTMLElement,
 		tree: TreeNode | TreeNode[] | null,
-		params: CodeblockParams
+		params: CodeblockParams,
+		truncatedCount: number = 0,
+		hasFilters: boolean = false
 	): void {
 		container.empty();
 		container.addClass('relation-codeblock-container');
@@ -259,6 +290,16 @@ export class CodeblockProcessor {
 		// Add mode class for styling
 		if (params.mode) {
 			container.addClass(`relation-codeblock-mode-${params.mode}`);
+		}
+
+		// Add style variant class
+		if (params.style) {
+			container.addClass(`relation-codeblock-style-${params.style}`);
+		}
+
+		// Add data attribute when filters are active
+		if (hasFilters) {
+			container.setAttribute('data-filtered', 'true');
 		}
 
 		// Handle empty result
@@ -286,6 +327,13 @@ export class CodeblockProcessor {
 		} else {
 			// Single tree (ancestors, descendants)
 			renderer.render(tree, container);
+		}
+
+		// Add truncation indicator if nodes were truncated
+		if (truncatedCount > 0) {
+			const truncationEl = container.createDiv('relation-codeblock-truncation');
+			truncationEl.setText(`(+${truncatedCount} more...)`);
+			truncationEl.setAttribute('title', `${truncatedCount} nodes hidden due to max-nodes limit`);
 		}
 	}
 

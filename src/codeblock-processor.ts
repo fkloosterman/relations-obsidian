@@ -271,7 +271,7 @@ export class CodeblockProcessor {
 		// Create renderer
 		const renderer = new TreeRenderer(this.app, {
 			collapsible: params.mode === 'tree',
-			initiallyCollapsed: params.collapsed ?? false,
+			initialDepth: params.collapsed ? 0 : 2,
 			enableNavigation: true,
 			showCycleIndicators: params.showCycles ?? true,
 			cssPrefix: 'relation-codeblock'

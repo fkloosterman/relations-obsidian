@@ -4,6 +4,7 @@ import { RelationshipEngine } from './relationship-engine';
 import { DiagnosticSeverity } from './graph-validator';
 import { VIEW_TYPE_RELATION_SIDEBAR, RelationSidebarView } from './sidebar-view';
 import { FrontmatterCache } from './frontmatter-cache';
+import { CodeblockProcessor, createCodeblockProcessor } from './codeblock-processor';
 import {
   AncestorQueryResult,
   DescendantQueryResult,
@@ -37,6 +38,9 @@ export default class ParentRelationPlugin extends Plugin {
 
   // Shared frontmatter cache
   frontmatterCache!: FrontmatterCache;
+
+  // Codeblock processor (Milestone 5.1)
+  codeblockProcessor!: CodeblockProcessor;
 
   // Command infrastructure (Milestone 4.3B Phase 4)
   private lastClickedFile: TFile | null = null;
@@ -108,6 +112,15 @@ export default class ParentRelationPlugin extends Plugin {
 
     // Register advanced commands (Milestone 4.3B Phase 4)
     this.registerCommands();
+
+    // Register codeblock processor (Milestone 5.1)
+    this.codeblockProcessor = createCodeblockProcessor(this.app, this);
+    this.registerMarkdownCodeBlockProcessor(
+      'relation-tree',
+      (source, el, ctx) => {
+        this.codeblockProcessor.process(source, el, ctx);
+      }
+    );
 
     this.addSettingTab(new ParentRelationSettingTab(this.app, this));
 

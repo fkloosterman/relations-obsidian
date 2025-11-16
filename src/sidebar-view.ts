@@ -204,17 +204,37 @@ export class RelationSidebarView extends ItemView {
 			setIcon(button, 'pin');
 			button.addClass('is-active');
 			button.setAttribute('aria-label', 'Unpin from this note');
-			// Visual feedback for pinned state
-			button.style.color = 'var(--interactive-accent)';
+			// Bold visual feedback for pinned state
+			button.style.color = 'var(--text-on-accent)';
+			button.style.backgroundColor = 'var(--interactive-accent)';
+			button.style.borderRadius = '4px';
+			button.style.padding = '6px';
 			button.style.opacity = '1';
 		} else {
 			setIcon(button, 'pin');
 			button.removeClass('is-active');
 			button.setAttribute('aria-label', 'Pin to this note');
-			// Visual feedback for unpinned state
+			// Subtle visual feedback for unpinned state
 			button.style.color = 'var(--icon-color)';
-			button.style.opacity = '0.5';
+			button.style.backgroundColor = 'transparent';
+			button.style.borderRadius = '4px';
+			button.style.padding = '6px';
+			button.style.opacity = '0.6';
 		}
+
+		// Hover effect
+		button.onmouseenter = () => {
+			if (!isPinned) {
+				button.style.backgroundColor = 'var(--background-modifier-hover)';
+				button.style.opacity = '1';
+			}
+		};
+		button.onmouseleave = () => {
+			if (!isPinned) {
+				button.style.backgroundColor = 'transparent';
+				button.style.opacity = '0.6';
+			}
+		};
 	}
 
 	/**
@@ -454,7 +474,6 @@ export class RelationSidebarView extends ItemView {
 		pinButton.style.display = 'flex';
 		pinButton.style.alignItems = 'center';
 		pinButton.style.cursor = 'pointer';
-		pinButton.style.padding = '4px';
 		this.updatePinButton(pinButton);
 
 		pinButton.addEventListener('click', () => {

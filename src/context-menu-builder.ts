@@ -460,10 +460,10 @@ export class ContextMenuBuilder {
 	 * @param context - The advanced menu context
 	 */
 	private addRelationshipActions(menu: Menu, context: AdvancedMenuContext): void {
-		const { section, parentFieldDisplayName, isCurrentParent } = context;
+		const { section, parentFieldDisplayName, isCurrentParent, isCurrentChild } = context;
 
-		// "Set as [Field] parent" - Available in Ancestors and Siblings sections
-		if (section === 'ancestors' || section === 'siblings') {
+		// "Set as [Field] parent" - Only if NOT already a parent
+		if ((section === 'ancestors' || section === 'siblings') && !isCurrentParent) {
 			menu.addItem(item => {
 				item
 					.setTitle(`Set as ${parentFieldDisplayName} parent`)
@@ -472,8 +472,8 @@ export class ContextMenuBuilder {
 			});
 		}
 
-		// "Remove as [Field] parent" - Only in Ancestors if currently a parent
-		if (section === 'ancestors' && isCurrentParent) {
+		// "Remove as [Field] parent" - Only if IS a parent
+		if ((section === 'ancestors' || section === 'siblings') && isCurrentParent) {
 			menu.addItem(item => {
 				item
 					.setTitle(`Remove as ${parentFieldDisplayName} parent`)
@@ -482,8 +482,8 @@ export class ContextMenuBuilder {
 			});
 		}
 
-		// "Remove as [Field] child" - Only in Descendants
-		if (section === 'descendants') {
+		// "Remove as [Field] child" - Only if current file IS the parent of this node
+		if (section === 'descendants' && isCurrentChild) {
 			menu.addItem(item => {
 				item
 					.setTitle(`Remove as ${parentFieldDisplayName} child`)

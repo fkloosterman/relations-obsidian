@@ -648,6 +648,42 @@ export class RelationSidebarView extends ItemView {
 					linktext: sibling.path
 				});
 			});
+
+			// Context menu (right-click)
+			item.addEventListener('contextmenu', (e) => {
+				e.preventDefault();
+				e.stopPropagation();
+
+				// Create a simple TreeNode for the sibling
+				const siblingNode: TreeNode = {
+					file: sibling,
+					children: [],
+					depth: 0,
+					isCycle: false,
+					metadata: {}
+				};
+
+				// Get current parent field info
+				const fieldConfig = this.plugin.settings.parentFields.find(
+					f => f.name === this.viewState.selectedParentField
+				);
+
+				// Build context menu context
+				const menuContext = {
+					node: siblingNode,
+					file: sibling,
+					section: 'siblings' as const,
+					parentField: this.viewState.selectedParentField,
+					parentFieldDisplayName: fieldConfig?.displayName || this.viewState.selectedParentField,
+					sidebarView: this,
+					isPinned: this.isPinnedToCurrentField(),
+					targetElement: item,
+					event: e
+				};
+
+				// Show context menu
+				this.contextMenuBuilder.showContextMenu(menuContext);
+			});
 		});
 	}
 

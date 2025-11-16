@@ -638,3 +638,36 @@
 .parent-field-config .setting-item-control {
   min-width: 200px;
 }
+
+/* ============================================
+   Context Menu Enhancements (Milestone 4.3A)
+   ============================================ */
+
+/* Make node content focusable and highlight on focus */
+.relation-tree-node-content[tabindex] {
+	cursor: pointer;
+	position: relative;
+}
+
+.relation-tree-node-content[tabindex]:focus {
+	outline: 2px solid var(--interactive-accent);
+	outline-offset: 2px;
+	background-color: var(--background-modifier-hover);
+}
+
+/* Focus-visible for better keyboard accessibility */
+.relation-tree-node-content[tabindex]:focus-visible {
+	outline: 2px solid var(--interactive-accent);
+	outline-offset: 2px;
+	z-index: 1;
+}
+
+/* Active state when context menu is shown */
+.relation-tree-node-content.is-context-menu-active {
+	background-color: var(--background-modifier-active-hover);
+}
+
+/* Enhance hover state for nodes with context menu */
+.relation-tree-container .relation-tree-node-content[tabindex]:hover {
+	background-color: var(--background-modifier-hover);
+}

@@ -6,6 +6,7 @@ export default {
     file: 'main.js',
     format: 'cjs'
   },
+  external: ["obsidian"],
   plugins: [
     typescript({ tsconfig: './tsconfig.json' })
   ]

@@ -1,5 +1,7 @@
 import { TFile, App } from 'obsidian';
 import { TreeNode } from './tree-model';
+import { ContextMenuBuilder } from './context-menu-builder';
+import type { RelationSidebarView } from './sidebar-view';
 
 /**
  * Configuration options for tree rendering
@@ -29,6 +31,26 @@ export interface TreeRendererOptions {
 
 	/** Maximum depth to render (prevents huge trees) */
 	maxRenderDepth?: number;
+
+	/** Enable context menu on tree nodes */
+	enableContextMenu?: boolean;
+}
+
+/**
+ * Context information passed to render() for context menu building
+ */
+export interface TreeRenderContext {
+	/** Which section the tree is in */
+	section?: 'ancestors' | 'descendants' | 'siblings';
+
+	/** Currently selected parent field */
+	parentField?: string;
+
+	/** Display name of the parent field */
+	parentFieldDisplayName?: string;
+
+	/** Reference to the sidebar view */
+	sidebarView?: RelationSidebarView;
 }
 
 /**
@@ -52,6 +74,8 @@ interface NodeState {
 export class TreeRenderer {
 	private options: Required<TreeRendererOptions>;
 	private nodeStates: Map<string, NodeState> = new Map();
+	private contextMenuBuilder?: ContextMenuBuilder;
+	private renderContext?: TreeRenderContext;
 
 	constructor(
 		private app: App,
@@ -66,7 +90,17 @@ export class TreeRenderer {
 			enableNavigation: options.enableNavigation ?? true,
 			showCycleIndicators: options.showCycleIndicators ?? true,
 			maxRenderDepth: options.maxRenderDepth ?? 100,
+			enableContextMenu: options.enableContextMenu ?? false,
 		};
+	}
+
+	/**
+	 * Sets the context menu builder for this renderer.
+	 *
+	 * @param builder - The context menu builder to use
+	 */
+	setContextMenuBuilder(builder: ContextMenuBuilder): void {
+		this.contextMenuBuilder = builder;
 	}
 
 	/**
@@ -74,8 +108,9 @@ export class TreeRenderer {
 	 *
 	 * @param tree - Root TreeNode to render
 	 * @param container - HTML element to render into
+	 * @param context - Optional context for context menu building
 	 */
-	render(tree: TreeNode, container: HTMLElement): void {
+	render(tree: TreeNode, container: HTMLElement, context?: TreeRenderContext): void {
 		// Clear container
 		container.innerHTML = '';
 
@@ -84,6 +119,14 @@ export class TreeRenderer {
 
 		// Reset state
 		this.nodeStates.clear();
+
+		// Store context for later use
+		this.renderContext = context;
+
+		// Attach context menu handler at container level if enabled
+		if (this.options.enableContextMenu && this.contextMenuBuilder && context) {
+			this.attachContextMenuHandler(container, context);
+		}
 
 		// Render root node and its children
 		const rootElement = this.renderNode(tree, 0);
@@ -100,7 +143,7 @@ export class TreeRenderer {
 	renderNode(node: TreeNode, currentDepth: number): HTMLElement {
 		const nodeContainer = document.createElement('div');
 		nodeContainer.classList.add(`${this.options.cssPrefix}-node`);
-	
+
 		// Check depth limit
 		if (currentDepth >= this.options.maxRenderDepth) {
 			const depthLimit = document.createElement('div');
@@ -109,10 +152,24 @@ export class TreeRenderer {
 			nodeContainer.appendChild(depthLimit);
 			return nodeContainer;
 		}
-	
+
 		// Create node content wrapper
 		const nodeContent = document.createElement('div');
 		nodeContent.classList.add(`${this.options.cssPrefix}-node-content`);
+
+		// Store node data on element for context menu access
+		nodeContent.setAttribute('data-path', node.file.path);
+		nodeContent.setAttribute('data-depth', String(node.depth));
+
+		// Store the full TreeNode data
+		(nodeContent as any).__treeNodeData = node;
+
+		// Make focusable for keyboard navigation and context menu
+		if (this.options.enableContextMenu) {
+			nodeContent.setAttribute('tabindex', '0');
+			nodeContent.setAttribute('role', 'treeitem');
+			nodeContent.setAttribute('aria-label', node.file.basename);
+		}
 	
 		// Set depth for indentation (CSS will handle via custom property)
 		nodeContent.style.setProperty('--tree-depth', String(node.depth));
@@ -433,6 +490,110 @@ export class TreeRenderer {
 				}
 			}
 		});
+	}
+
+	/**
+	 * Attaches context menu event handler to tree container.
+	 *
+	 * Uses event delegation for efficient handling of right-click events.
+	 *
+	 * @param container - The tree container element
+	 * @param context - The render context information
+	 */
+	private attachContextMenuHandler(
+		container: HTMLElement,
+		context: TreeRenderContext
+	): void {
+		// Right-click handler
+		container.addEventListener('contextmenu', (event: MouseEvent) => {
+			event.preventDefault();
+			event.stopPropagation();
+
+			const target = event.target as HTMLElement;
+			const nodeEl = target.closest(`.${this.options.cssPrefix}-node-content`) as HTMLElement;
+
+			if (!nodeEl) return;
+
+			const nodeData = this.getNodeDataFromElement(nodeEl);
+			if (!nodeData) return;
+
+			// Build menu context
+			const menuContext = {
+				node: nodeData.node,
+				file: nodeData.file,
+				section: context.section || 'ancestors',
+				parentField: context.parentField || '',
+				parentFieldDisplayName: context.parentFieldDisplayName || '',
+				sidebarView: context.sidebarView!,
+				isPinned: context.sidebarView?.isPinnedToCurrentField() || false,
+				targetElement: nodeEl,
+				event
+			};
+
+			// Show context menu
+			this.contextMenuBuilder!.showContextMenu(menuContext);
+		});
+
+		// Keyboard context menu key handler
+		container.addEventListener('keydown', (event: KeyboardEvent) => {
+			// Context menu key or Shift+F10
+			if (event.key === 'ContextMenu' ||
+				(event.shiftKey && event.key === 'F10')) {
+				event.preventDefault();
+				event.stopPropagation();
+
+				const target = event.target as HTMLElement;
+				const nodeEl = target.closest(`.${this.options.cssPrefix}-node-content`) as HTMLElement;
+
+				if (!nodeEl) return;
+
+				const nodeData = this.getNodeDataFromElement(nodeEl);
+				if (!nodeData) return;
+
+				// Build menu context (without mouse event)
+				const menuContext = {
+					node: nodeData.node,
+					file: nodeData.file,
+					section: context.section || 'ancestors',
+					parentField: context.parentField || '',
+					parentFieldDisplayName: context.parentFieldDisplayName || '',
+					sidebarView: context.sidebarView!,
+					isPinned: context.sidebarView?.isPinnedToCurrentField() || false,
+					targetElement: nodeEl
+				};
+
+				// Show context menu at element position
+				this.contextMenuBuilder!.showContextMenu(menuContext);
+			}
+		});
+	}
+
+	/**
+	 * Extracts node data from a tree node DOM element.
+	 *
+	 * @param nodeEl - The node content element
+	 * @returns Object with node and file, or null if not found
+	 */
+	private getNodeDataFromElement(nodeEl: HTMLElement): {
+		node: TreeNode;
+		file: TFile;
+	} | null {
+		// Get file path from data attribute
+		const filePath = nodeEl.getAttribute('data-path');
+		if (!filePath) return null;
+
+		// Get file from vault
+		const file = this.app.vault.getAbstractFileByPath(filePath);
+		if (!(file instanceof TFile)) return null;
+
+		// Get tree node from stored data
+		const nodeData = (nodeEl as any).__treeNodeData;
+		if (!nodeData) return null;
+
+		return {
+			node: nodeData,
+			file
+		};
 	}
 
 	/**

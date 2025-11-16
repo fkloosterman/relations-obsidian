@@ -1,8 +1,9 @@
 import { ItemView, WorkspaceLeaf, TFile, setIcon } from 'obsidian';
 import type ParentRelationPlugin from './main';
-import { TreeRenderer } from './tree-renderer';
+import { TreeRenderer, TreeRenderContext } from './tree-renderer';
 import { buildAncestorTree, buildDescendantTree, buildSiblingTree, TreeNode } from './tree-model';
 import { ParentFieldSelector } from './parent-field-selector';
+import { ContextMenuBuilder } from './context-menu-builder';
 
 /**
  * View type identifier for the relation sidebar
@@ -54,6 +55,7 @@ const DEFAULT_VIEW_STATE: SidebarViewState = {
 export class RelationSidebarView extends ItemView {
 	private plugin: ParentRelationPlugin;
 	private renderer: TreeRenderer;
+	private contextMenuBuilder: ContextMenuBuilder;
 	private currentFile: TFile | null = null;
 	private viewState: SidebarViewState;
 	private contentContainer!: HTMLElement;
@@ -65,13 +67,20 @@ export class RelationSidebarView extends ItemView {
 		this.plugin = plugin;
 		this.viewState = { ...DEFAULT_VIEW_STATE };
 
-		// Initialize tree renderer
+		// Initialize context menu builder
+		this.contextMenuBuilder = new ContextMenuBuilder(this.app, this.plugin);
+
+		// Initialize tree renderer with context menu support
 		this.renderer = new TreeRenderer(this.app, {
 			collapsible: true,
 			enableNavigation: true,
+			enableContextMenu: true,
 			showCycleIndicators: true,
 			cssPrefix: 'relation-tree'
 		});
+
+		// Connect context menu builder to renderer
+		this.renderer.setContextMenuBuilder(this.contextMenuBuilder);
 	}
 
 	/**
@@ -547,6 +556,22 @@ export class RelationSidebarView extends ItemView {
 				const initialDepth = sectionConfig.initialDepth ?? 2;
 				this.renderer.updateOptions({ initialDepth });
 
+				// Create render context for context menu support
+				const renderContext: TreeRenderContext = {
+					section: sectionType,
+					parentField: this.viewState.selectedParentField,
+					parentFieldDisplayName: fieldConfig.displayName || fieldConfig.name,
+					sidebarView: this
+				};
+
+				// Store context in renderer for context menu functionality
+				this.renderer['renderContext'] = renderContext;
+
+				// Attach context menu handler at container level if enabled
+				if (this.renderer['options'].enableContextMenu && this.contextMenuBuilder) {
+					this.renderer['attachContextMenuHandler'](content, renderContext);
+				}
+
 				// Render only the children, not the root node (current file)
 				// Adjust depth to remove indentation from skipped root
 				tree.children.forEach(childNode => {
@@ -944,5 +969,33 @@ export class RelationSidebarView extends ItemView {
 	 */
 	isPinned(): boolean {
 		return !!this.viewState.pinnedFiles[this.viewState.selectedParentField];
+	}
+
+	/**
+	 * Pins the view to a specific file for the current parent field.
+	 *
+	 * @param file - The file to pin to
+	 */
+	pinToFile(file: TFile): void {
+		this.viewState.pinnedFiles[this.viewState.selectedParentField] = file.path;
+		this.updateView();
+	}
+
+	/**
+	 * Checks if the view is currently pinned for the current parent field.
+	 * Alias for isPinned() for better semantic clarity in context menu code.
+	 */
+	isPinnedToCurrentField(): boolean {
+		return this.isPinned();
+	}
+
+	/**
+	 * Sets the selected parent field for this view.
+	 *
+	 * @param fieldName - The name of the parent field to select
+	 */
+	setSelectedParentField(fieldName: string): void {
+		this.viewState.selectedParentField = fieldName;
+		this.updateView();
 	}
 }

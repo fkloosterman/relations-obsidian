@@ -217,7 +217,7 @@ export class ParentFieldConfigForm {
 
     new Setting(containerEl)
       .setName('Initial Unfold Depth')
-      .setDesc('How many levels to show expanded by default')
+      .setDesc('How many levels to show expanded by default (minimum: 1)')
       .addText(text => {
         text.setPlaceholder('2');
         text.setValue(config.initialDepth?.toString() || '');
@@ -226,7 +226,7 @@ export class ParentFieldConfigForm {
             config.initialDepth = undefined;
           } else {
             const num = parseInt(value);
-            config.initialDepth = isNaN(num) ? undefined : Math.max(0, num);
+            config.initialDepth = isNaN(num) ? undefined : Math.max(1, num);
           }
           this.onChange(this.config);
         });

@@ -68,7 +68,6 @@ export class RelationSidebarView extends ItemView {
 		// Initialize tree renderer
 		this.renderer = new TreeRenderer(this.app, {
 			collapsible: true,
-			initiallyCollapsed: false,
 			enableNavigation: true,
 			showCycleIndicators: true,
 			cssPrefix: 'relation-tree'
@@ -353,6 +352,13 @@ export class RelationSidebarView extends ItemView {
 			return;
 		}
 
+		// Check if file changed - if so, reset tree state for predictable UI
+		const fileChanged = !this.currentFile || this.currentFile.path !== fileToDisplay.path;
+		if (fileChanged) {
+			// Clear tree renderer state so manual toggles don't persist across notes
+			this.renderer.destroy();
+		}
+		
 		// Update current file
 		this.currentFile = fileToDisplay;
 
@@ -535,6 +541,11 @@ export class RelationSidebarView extends ItemView {
 			if (tree && tree.children && tree.children.length > 0) {
 				// Add tree container class for styling
 				content.classList.add(`${this.renderer['options'].cssPrefix}-container`);
+
+				// Update renderer options with the initialDepth from section config
+				// Use initialDepth if provided, otherwise default to 2
+				const initialDepth = sectionConfig.initialDepth ?? 2;
+				this.renderer.updateOptions({ initialDepth });
 
 				// Render only the children, not the root node (current file)
 				// Adjust depth to remove indentation from skipped root

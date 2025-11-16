@@ -236,12 +236,12 @@ export const DEFAULT_SETTINGS: ParentRelationSettings = {
  * @returns True if valid, false otherwise
  */
 export function validateSectionConfig(config: Partial<SectionConfig>): boolean {
-  // Check for negative depth values
+  // Check for invalid depth values (must be >= 1 for initialDepth, >= 0 for maxDepth)
   if (config.maxDepth !== undefined && config.maxDepth < 0) {
     return false;
   }
 
-  if (config.initialDepth !== undefined && config.initialDepth < 0) {
+  if (config.initialDepth !== undefined && config.initialDepth < 1) {
     return false;
   }
 

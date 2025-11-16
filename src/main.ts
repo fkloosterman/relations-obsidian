@@ -203,6 +203,41 @@ export default class ParentRelationPlugin extends Plugin {
   }
 
   /**
+   * Opens a new sidebar instance pinned to a specific file.
+   *
+   * @param file - The file to pin to
+   * @param parentField - The parent field to show
+   */
+  async openNewSidebarPinnedTo(
+    file: TFile,
+    parentField: string
+  ): Promise<void> {
+    // Get or create a new leaf in the right sidebar
+    const leaf = this.app.workspace.getRightLeaf(false);
+
+    if (!leaf) {
+      new Notice('Could not create new sidebar');
+      return;
+    }
+
+    // Open the relation sidebar view
+    await leaf.setViewState({
+      type: VIEW_TYPE_RELATION_SIDEBAR,
+      active: true
+    });
+
+    // Get the view and configure it
+    const view = leaf.view as RelationSidebarView;
+    if (view && view instanceof RelationSidebarView) {
+      // Set the parent field
+      view.setSelectedParentField(parentField);
+
+      // Pin to the file
+      view.pinToFile(file);
+    }
+  }
+
+  /**
    * Runs graph diagnostics and logs results for all graphs.
    */
   runDiagnostics(): void {

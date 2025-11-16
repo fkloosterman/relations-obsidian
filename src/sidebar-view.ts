@@ -945,4 +945,32 @@ export class RelationSidebarView extends ItemView {
 	isPinned(): boolean {
 		return !!this.viewState.pinnedFiles[this.viewState.selectedParentField];
 	}
+
+	/**
+	 * Pins the view to a specific file for the current parent field.
+	 *
+	 * @param file - The file to pin to
+	 */
+	pinToFile(file: TFile): void {
+		this.viewState.pinnedFiles[this.viewState.selectedParentField] = file.path;
+		this.updateView();
+	}
+
+	/**
+	 * Checks if the view is currently pinned for the current parent field.
+	 * Alias for isPinned() for better semantic clarity in context menu code.
+	 */
+	isPinnedToCurrentField(): boolean {
+		return this.isPinned();
+	}
+
+	/**
+	 * Sets the selected parent field for this view.
+	 *
+	 * @param fieldName - The name of the parent field to select
+	 */
+	setSelectedParentField(fieldName: string): void {
+		this.viewState.selectedParentField = fieldName;
+		this.updateView();
+	}
 }

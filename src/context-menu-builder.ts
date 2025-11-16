@@ -790,16 +790,20 @@ export class ContextMenuBuilder {
 	private handleExpandAllChildren(context: AdvancedMenuContext): void {
 		const { file, sidebarView } = context;
 
+		console.log('[ContextMenuBuilder] handleExpandAllChildren called for:', file.path);
+
 		// Get the tree renderer from the sidebar view
 		const renderer = (sidebarView as any).renderer;
 		if (!renderer) {
+			console.error('[ContextMenuBuilder] Tree renderer not available');
 			new Notice('Tree renderer not available');
 			return;
 		}
 
+		console.log('[ContextMenuBuilder] Calling renderer.expandAllChildren');
 		// Expand all children of this node
 		renderer.expandAllChildren(file.path);
-		new Notice('Expanded all children');
+		// Note: The renderer will log the count
 	}
 
 	/**
@@ -810,16 +814,20 @@ export class ContextMenuBuilder {
 	private handleCollapseAllChildren(context: AdvancedMenuContext): void {
 		const { file, sidebarView } = context;
 
+		console.log('[ContextMenuBuilder] handleCollapseAllChildren called for:', file.path);
+
 		// Get the tree renderer from the sidebar view
 		const renderer = (sidebarView as any).renderer;
 		if (!renderer) {
+			console.error('[ContextMenuBuilder] Tree renderer not available');
 			new Notice('Tree renderer not available');
 			return;
 		}
 
+		console.log('[ContextMenuBuilder] Calling renderer.collapseAllChildren');
 		// Collapse all children of this node
 		renderer.collapseAllChildren(file.path);
-		new Notice('Collapsed all children');
+		// Note: The renderer will log the count
 	}
 
 	/**

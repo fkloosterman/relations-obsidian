@@ -617,8 +617,14 @@ export class TreeRenderer {
 	 * @param filePath - Path of the node to expand all children for
 	 */
 	expandAllChildren(filePath: string): void {
+		console.log('[TreeRenderer] expandAllChildren called for:', filePath);
+		console.log('[TreeRenderer] nodeStates size:', this.nodeStates.size);
+
 		const state = this.nodeStates.get(filePath);
-		if (!state) return;
+		if (!state) {
+			console.warn('[TreeRenderer] No state found for:', filePath);
+			return;
+		}
 
 		// First expand the node itself if it's collapsed
 		if (state.collapsed) {
@@ -645,14 +651,17 @@ export class TreeRenderer {
 	 * @param filePath - Parent node path
 	 */
 	private expandAllDescendants(filePath: string): void {
+		const parentState = this.nodeStates.get(filePath);
+		if (!parentState || !parentState.element) {
+			console.warn('[TreeRenderer] Invalid parent state for:', filePath);
+			return;
+		}
+
+		let expandedCount = 0;
 		// Get all node states that are descendants of this path
 		for (const [path, state] of this.nodeStates.entries()) {
 			if (path === filePath) continue;
-
-			// Check if this node is a descendant (its path appears in the tree under filePath)
-			// We can determine this by checking if the element is within the children container
-			const parentState = this.nodeStates.get(filePath);
-			if (!parentState || !state.element) continue;
+			if (!state.element) continue;
 
 			// Check if element is a descendant in the DOM
 			if (parentState.element.contains(state.element)) {
@@ -668,9 +677,11 @@ export class TreeRenderer {
 						this.updateToggleIcon(toggleEl, false);
 						toggleEl.setAttribute('aria-expanded', 'true');
 					}
+					expandedCount++;
 				}
 			}
 		}
+		console.log('[TreeRenderer] Expanded', expandedCount, 'descendants');
 	}
 
 	/**
@@ -679,6 +690,9 @@ export class TreeRenderer {
 	 * @param filePath - Path of the node to collapse all children for
 	 */
 	collapseAllChildren(filePath: string): void {
+		console.log('[TreeRenderer] collapseAllChildren called for:', filePath);
+		console.log('[TreeRenderer] nodeStates size:', this.nodeStates.size);
+
 		// Recursively collapse all descendants (but not the node itself)
 		this.collapseAllDescendants(filePath);
 	}
@@ -689,13 +703,17 @@ export class TreeRenderer {
 	 * @param filePath - Parent node path
 	 */
 	private collapseAllDescendants(filePath: string): void {
+		const parentState = this.nodeStates.get(filePath);
+		if (!parentState || !parentState.element) {
+			console.warn('[TreeRenderer] Invalid parent state for:', filePath);
+			return;
+		}
+
+		let collapsedCount = 0;
 		// Get all node states that are descendants of this path
 		for (const [path, state] of this.nodeStates.entries()) {
 			if (path === filePath) continue;
-
-			// Check if this node is a descendant
-			const parentState = this.nodeStates.get(filePath);
-			if (!parentState || !state.element) continue;
+			if (!state.element) continue;
 
 			// Check if element is a descendant in the DOM
 			if (parentState.element.contains(state.element)) {
@@ -711,9 +729,11 @@ export class TreeRenderer {
 						this.updateToggleIcon(toggleEl, true);
 						toggleEl.setAttribute('aria-expanded', 'false');
 					}
+					collapsedCount++;
 				}
 			}
 		}
+		console.log('[TreeRenderer] Collapsed', collapsedCount, 'descendants');
 	}
 
 	/**

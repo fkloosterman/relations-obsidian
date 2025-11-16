@@ -184,6 +184,26 @@ export class RelationshipEngine {
       return [];
     }
 
+    // Build sets of ancestors and descendants to filter out
+    const ancestorSet = new Set<string>();
+    const descendantSet = new Set<string>();
+
+    // Get all ancestors (flatten the generations array)
+    const ancestorGenerations = this.getAncestors(file);
+    for (const generation of ancestorGenerations) {
+      for (const ancestor of generation) {
+        ancestorSet.add(ancestor.path);
+      }
+    }
+
+    // Get all descendants (flatten the generations array)
+    const descendantGenerations = this.getDescendants(file);
+    for (const generation of descendantGenerations) {
+      for (const descendant of generation) {
+        descendantSet.add(descendant.path);
+      }
+    }
+
     // Collect all unique children from all parents
     const siblingSet = new Set<string>();
 
@@ -195,12 +215,17 @@ export class RelationshipEngine {
       }
     }
 
-    // Convert set to array of TFile objects
+    // Convert set to array of TFile objects, filtering out ancestors and descendants
     const siblings: TFile[] = [];
 
     for (const siblingPath of siblingSet) {
       // Skip self if not including self
       if (!includeSelf && siblingPath === file.path) {
+        continue;
+      }
+
+      // Skip if this file is an ancestor or descendant
+      if (ancestorSet.has(siblingPath) || descendantSet.has(siblingPath)) {
         continue;
       }
 

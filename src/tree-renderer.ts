@@ -612,6 +612,209 @@ export class TreeRenderer {
 	}
 
 	/**
+	 * Expands all descendants of a node.
+	 *
+	 * @param filePath - Path of the node to expand all children for
+	 */
+	expandAllChildren(filePath: string): void {
+		const state = this.nodeStates.get(filePath);
+		if (!state) return;
+
+		// First expand the node itself if it's collapsed
+		if (state.collapsed) {
+			state.collapsed = false;
+			state.element.classList.remove(`${this.options.cssPrefix}-collapsed`);
+
+			// Update toggle icon
+			const toggleEl = state.element.parentElement?.querySelector(
+				`[data-file-path="${filePath}"]`
+			) as HTMLElement;
+			if (toggleEl) {
+				this.updateToggleIcon(toggleEl, false);
+				toggleEl.setAttribute('aria-expanded', 'true');
+			}
+		}
+
+		// Recursively expand all descendants
+		this.expandAllDescendants(filePath);
+	}
+
+	/**
+	 * Recursively expands all descendants of a node.
+	 *
+	 * @param filePath - Parent node path
+	 */
+	private expandAllDescendants(filePath: string): void {
+		// Get all node states that are descendants of this path
+		for (const [path, state] of this.nodeStates.entries()) {
+			if (path === filePath) continue;
+
+			// Check if this node is a descendant (its path appears in the tree under filePath)
+			// We can determine this by checking if the element is within the children container
+			const parentState = this.nodeStates.get(filePath);
+			if (!parentState || !state.element) continue;
+
+			// Check if element is a descendant in the DOM
+			if (parentState.element.contains(state.element)) {
+				if (state.collapsed) {
+					state.collapsed = false;
+					state.element.classList.remove(`${this.options.cssPrefix}-collapsed`);
+
+					// Update toggle icon
+					const toggleEl = state.element.parentElement?.querySelector(
+						`[data-file-path="${path}"]`
+					) as HTMLElement;
+					if (toggleEl) {
+						this.updateToggleIcon(toggleEl, false);
+						toggleEl.setAttribute('aria-expanded', 'true');
+					}
+				}
+			}
+		}
+	}
+
+	/**
+	 * Collapses all descendants of a node.
+	 *
+	 * @param filePath - Path of the node to collapse all children for
+	 */
+	collapseAllChildren(filePath: string): void {
+		// Recursively collapse all descendants (but not the node itself)
+		this.collapseAllDescendants(filePath);
+	}
+
+	/**
+	 * Recursively collapses all descendants of a node.
+	 *
+	 * @param filePath - Parent node path
+	 */
+	private collapseAllDescendants(filePath: string): void {
+		// Get all node states that are descendants of this path
+		for (const [path, state] of this.nodeStates.entries()) {
+			if (path === filePath) continue;
+
+			// Check if this node is a descendant
+			const parentState = this.nodeStates.get(filePath);
+			if (!parentState || !state.element) continue;
+
+			// Check if element is a descendant in the DOM
+			if (parentState.element.contains(state.element)) {
+				if (!state.collapsed) {
+					state.collapsed = true;
+					state.element.classList.add(`${this.options.cssPrefix}-collapsed`);
+
+					// Update toggle icon
+					const toggleEl = state.element.parentElement?.querySelector(
+						`[data-file-path="${path}"]`
+					) as HTMLElement;
+					if (toggleEl) {
+						this.updateToggleIcon(toggleEl, true);
+						toggleEl.setAttribute('aria-expanded', 'false');
+					}
+				}
+			}
+		}
+	}
+
+	/**
+	 * Expands all ancestors to make a specific node visible and scrolls to it.
+	 *
+	 * @param filePath - Path of the node to expand to
+	 */
+	expandToNode(filePath: string): void {
+		const targetState = this.nodeStates.get(filePath);
+		if (!targetState) return;
+
+		// Find all ancestor paths by traversing up the DOM
+		const ancestorPaths: string[] = [];
+		let currentElement = targetState.element.parentElement;
+
+		while (currentElement) {
+			// Check if this element is a children container
+			if (currentElement.classList.contains(`${this.options.cssPrefix}-children`)) {
+				// Find the parent node content
+				const parentContainer = currentElement.parentElement;
+				if (parentContainer) {
+					const nodeContent = parentContainer.querySelector(`.${this.options.cssPrefix}-node-content`);
+					if (nodeContent) {
+						const path = nodeContent.getAttribute('data-path');
+						if (path) {
+							ancestorPaths.push(path);
+						}
+					}
+				}
+			}
+			currentElement = currentElement.parentElement;
+		}
+
+		// Expand all ancestors
+		for (const ancestorPath of ancestorPaths) {
+			const state = this.nodeStates.get(ancestorPath);
+			if (state && state.collapsed) {
+				state.collapsed = false;
+				state.element.classList.remove(`${this.options.cssPrefix}-collapsed`);
+
+				// Update toggle icon
+				const toggleEl = state.element.parentElement?.querySelector(
+					`[data-file-path="${ancestorPath}"]`
+				) as HTMLElement;
+				if (toggleEl) {
+					this.updateToggleIcon(toggleEl, false);
+					toggleEl.setAttribute('aria-expanded', 'true');
+				}
+			}
+		}
+
+		// Scroll to the node
+		this.scrollToNode(filePath);
+	}
+
+	/**
+	 * Scrolls to make a node visible with smooth animation.
+	 *
+	 * @param filePath - Path of the node to scroll to
+	 */
+	private scrollToNode(filePath: string): void {
+		const state = this.nodeStates.get(filePath);
+		if (!state || !state.element) return;
+
+		// Find the node content element
+		const nodeContent = state.element.parentElement?.querySelector(
+			`.${this.options.cssPrefix}-node-content`
+		) as HTMLElement;
+
+		if (nodeContent) {
+			// Scroll with smooth behavior
+			nodeContent.scrollIntoView({
+				behavior: 'smooth',
+				block: 'nearest',
+				inline: 'nearest'
+			});
+
+			// Add a highlight effect
+			nodeContent.classList.add(`${this.options.cssPrefix}-highlight`);
+			setTimeout(() => {
+				nodeContent.classList.remove(`${this.options.cssPrefix}-highlight`);
+			}, 2000);
+		}
+	}
+
+	/**
+	 * Finds the DOM element for a given file path.
+	 *
+	 * @param filePath - Path of the file to find
+	 * @returns The DOM element or null if not found
+	 */
+	findNodeElement(filePath: string): HTMLElement | null {
+		const state = this.nodeStates.get(filePath);
+		if (!state || !state.element) return null;
+
+		return state.element.parentElement?.querySelector(
+			`.${this.options.cssPrefix}-node-content`
+		) as HTMLElement | null;
+	}
+
+	/**
 	 * Destroys the renderer and cleans up state.
 	 */
 	destroy(): void {

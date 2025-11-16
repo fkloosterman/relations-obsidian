@@ -672,6 +672,20 @@
 	background-color: var(--background-modifier-hover);
 }
 
+/* Highlight effect for scrolling to nodes */
+.relation-tree-highlight {
+	animation: relation-tree-highlight-pulse 2s ease-out;
+}
+
+@keyframes relation-tree-highlight-pulse {
+	0% {
+		background-color: var(--text-selection);
+	}
+	100% {
+		background-color: transparent;
+	}
+}
+
 /* ============================================
    Confirmation Modal Styles (Milestone 4.3B)
    ============================================ */

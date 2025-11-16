@@ -440,8 +440,11 @@ export class ContextMenuBuilder {
 			this.addRelationshipActions(menu, context);
 		}
 
-		// Tree manipulation (not implemented yet - Milestone 4.3B Phase 3)
-		// Will be added in next phase
+		// Tree manipulation actions
+		if (this.config.showTreeActions && this.shouldShowTreeActions(context)) {
+			menu.addSeparator();
+			this.addTreeActions(menu, context);
+		}
 	}
 
 	/**
@@ -738,6 +741,85 @@ export class ContextMenuBuilder {
 		} else {
 			new Notice(`Failed to remove: ${result.error}`);
 		}
+	}
+
+	//
+	// Tree Manipulation Actions (Milestone 4.3B Phase 3)
+	//
+
+	/**
+	 * Determines if tree manipulation actions should be shown.
+	 *
+	 * @param context - The advanced menu context
+	 * @returns True if tree actions should be shown
+	 */
+	private shouldShowTreeActions(context: AdvancedMenuContext): boolean {
+		// Only show for nodes with children
+		return context.hasExpandableChildren;
+	}
+
+	/**
+	 * Adds tree manipulation actions to the menu.
+	 *
+	 * @param menu - The menu to add items to
+	 * @param context - The advanced menu context
+	 */
+	private addTreeActions(menu: Menu, context: AdvancedMenuContext): void {
+		// Expand all children
+		menu.addItem(item => {
+			item
+				.setTitle('Expand all children')
+				.setIcon('chevrons-down')
+				.onClick(() => this.handleExpandAllChildren(context));
+		});
+
+		// Collapse all children
+		menu.addItem(item => {
+			item
+				.setTitle('Collapse all children')
+				.setIcon('chevrons-up')
+				.onClick(() => this.handleCollapseAllChildren(context));
+		});
+	}
+
+	/**
+	 * Handles "Expand all children" action.
+	 *
+	 * @param context - The advanced menu context
+	 */
+	private handleExpandAllChildren(context: AdvancedMenuContext): void {
+		const { file, sidebarView } = context;
+
+		// Get the tree renderer from the sidebar view
+		const renderer = (sidebarView as any).renderer;
+		if (!renderer) {
+			new Notice('Tree renderer not available');
+			return;
+		}
+
+		// Expand all children of this node
+		renderer.expandAllChildren(file.path);
+		new Notice('Expanded all children');
+	}
+
+	/**
+	 * Handles "Collapse all children" action.
+	 *
+	 * @param context - The advanced menu context
+	 */
+	private handleCollapseAllChildren(context: AdvancedMenuContext): void {
+		const { file, sidebarView } = context;
+
+		// Get the tree renderer from the sidebar view
+		const renderer = (sidebarView as any).renderer;
+		if (!renderer) {
+			new Notice('Tree renderer not available');
+			return;
+		}
+
+		// Collapse all children of this node
+		renderer.collapseAllChildren(file.path);
+		new Notice('Collapsed all children');
 	}
 
 	/**

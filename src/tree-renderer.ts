@@ -8,8 +8,12 @@ export interface TreeRendererOptions {
 	/** Show collapse/expand toggles */
 	collapsible?: boolean;
 
-	/** Initial collapsed state for all nodes */
-	initiallyCollapsed?: boolean;
+	/**
+	 * Initial depth to unfold - nodes at depth <= initialDepth are expanded, beyond are collapsed.
+	 * Must be >= 1 (minimum depth). Invalid values (< 1, undefined, null) default to 2.
+	 * Example: initialDepth = 1 means only direct children are shown expanded.
+	 */
+	initialDepth?: number;
 
 	/** Show depth indicators */
 	showDepth?: boolean;
@@ -56,7 +60,7 @@ export class TreeRenderer {
 		// Set defaults
 		this.options = {
 			collapsible: options.collapsible ?? true,
-			initiallyCollapsed: options.initiallyCollapsed ?? false,
+			initialDepth: Math.max(1, options.initialDepth ?? 2), // Minimum depth is 1
 			showDepth: options.showDepth ?? false,
 			cssPrefix: options.cssPrefix ?? 'relation-tree',
 			enableNavigation: options.enableNavigation ?? true,
@@ -96,7 +100,7 @@ export class TreeRenderer {
 	renderNode(node: TreeNode, currentDepth: number): HTMLElement {
 		const nodeContainer = document.createElement('div');
 		nodeContainer.classList.add(`${this.options.cssPrefix}-node`);
-
+	
 		// Check depth limit
 		if (currentDepth >= this.options.maxRenderDepth) {
 			const depthLimit = document.createElement('div');
@@ -105,23 +109,13 @@ export class TreeRenderer {
 			nodeContainer.appendChild(depthLimit);
 			return nodeContainer;
 		}
-
+	
 		// Create node content wrapper
 		const nodeContent = document.createElement('div');
 		nodeContent.classList.add(`${this.options.cssPrefix}-node-content`);
-
+	
 		// Set depth for indentation (CSS will handle via custom property)
 		nodeContent.style.setProperty('--tree-depth', String(node.depth));
-
-		// Add collapse toggle if node has children
-		if (this.options.collapsible && node.children.length > 0) {
-			this.addCollapseToggle(nodeContent, node);
-		} else if (this.options.collapsible) {
-			// Add spacer for alignment when no toggle
-			const spacer = document.createElement('span');
-			spacer.classList.add(`${this.options.cssPrefix}-toggle-spacer`);
-			nodeContent.appendChild(spacer);
-		}
 
 		// Add file icon
 		const iconEl = document.createElement('span');
@@ -155,33 +149,66 @@ export class TreeRenderer {
 		}
 
 		nodeContainer.appendChild(nodeContent);
+	
+		// Pre-calculate state for children if node has any
+		if (node.children.length > 0) {
+			// Check if we have existing state (user manually toggled)
+			const existingState = this.nodeStates.get(node.file.path);
+			
+			// Determine initial collapsed state
+			let isCollapsed: boolean;
 
+			if (existingState) {
+				// Preserve user's manual toggle state
+				isCollapsed = existingState.collapsed;
+			} else {
+				// Use depth-based logic: collapse when currentDepth + 1 >= initialDepth
+				// This means initialDepth = 1 shows only top level nodes (children collapsed)
+				isCollapsed = (currentDepth + 1) >= this.options.initialDepth;
+			}
+			
+			// Store state BEFORE calling addCollapseToggle
+			// (We'll update the element reference later)
+			this.nodeStates.set(node.file.path, {
+				collapsed: isCollapsed,
+				element: null as any, // Will be set below
+			});
+		}
+	
+		// Add collapse toggle if node has children (state is now available)
+		if (this.options.collapsible && node.children.length > 0) {
+			this.addCollapseToggle(nodeContent, node);
+		} else if (this.options.collapsible) {
+			// Add spacer for alignment when no toggle
+			const spacer = document.createElement('span');
+			spacer.classList.add(`${this.options.cssPrefix}-toggle-spacer`);
+			nodeContent.appendChild(spacer);
+		}
+	
 		// Render children
 		if (node.children.length > 0) {
 			const childrenContainer = document.createElement('div');
 			childrenContainer.classList.add(`${this.options.cssPrefix}-children`);
-
-			// Set initial collapsed state
-			const isCollapsed = this.options.initiallyCollapsed;
-			if (isCollapsed) {
+	
+			// Get the state we stored earlier
+			const state = this.nodeStates.get(node.file.path)!;
+			
+			if (state.collapsed) {
 				childrenContainer.classList.add(`${this.options.cssPrefix}-collapsed`);
 			}
-
-			// Store state
-			this.nodeStates.set(node.file.path, {
-				collapsed: isCollapsed,
-				element: childrenContainer,
-			});
-
+	
+			// Update element reference in state
+			state.element = childrenContainer;
+	
 			// Render each child
 			node.children.forEach(child => {
 				const childElement = this.renderNode(child, currentDepth + 1);
 				childrenContainer.appendChild(childElement);
 			});
-
+	
 			nodeContainer.appendChild(childrenContainer);
 		}
-
+	
 		return nodeContainer;
 	}
 
@@ -198,11 +225,22 @@ export class TreeRenderer {
 		toggle.setAttribute('title', `Toggle ${node.file.basename} children`);
 		toggle.setAttribute('role', 'button');
 		toggle.setAttribute('aria-label', 'Toggle children');
-		toggle.setAttribute('aria-expanded', String(!this.options.initiallyCollapsed));
+		
+		// Get the current state to determine initial icon
+		// Note: this is called AFTER the state is stored in nodeStates
+		const state = this.nodeStates.get(node.file.path);
+		if (!state) {
+			console.error(`[TreeRenderer] No state found for ${node.file.path} when adding collapse toggle`);
+			return;
+		}
+		
+		const isCollapsed = state.collapsed;
+		
+		toggle.setAttribute('aria-expanded', String(!isCollapsed));
 		toggle.setAttribute('tabindex', '0');
-
+	
 		// Set initial icon
-		this.updateToggleIcon(toggle, this.options.initiallyCollapsed);
+		this.updateToggleIcon(toggle, isCollapsed);
 
 		// Click handler
 		toggle.addEventListener('click', (e) => {

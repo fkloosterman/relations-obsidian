@@ -162,3 +162,176 @@ export interface ParentFieldConfig {
   /** Siblings section configuration */
   siblings: SectionConfig;
 }
+
+/**
+ * Plugin settings with multi-parent-field support
+ */
+export interface ParentRelationSettings {
+  /** Array of configured parent fields */
+  parentFields: ParentFieldConfig[];
+
+  /** Which parent field to show by default when opening sidebar */
+  defaultParentField: string;
+
+  /** UI style preference: 'auto', 'segmented', or 'dropdown' */
+  uiStyle: 'auto' | 'segmented' | 'dropdown';
+
+  /** Diagnostic mode toggle */
+  diagnosticMode: boolean;
+}
+
+/**
+ * Default configuration for a section
+ */
+export const DEFAULT_SECTION_CONFIG: SectionConfig = {
+  displayName: '',  // Will be set per section type
+  visible: true,
+  collapsed: false,
+  maxDepth: 5,
+  initialDepth: 2,
+  sortOrder: 'alphabetical',
+  includeSelf: false
+};
+
+/**
+ * Default configuration for a parent field
+ */
+export const DEFAULT_PARENT_FIELD_CONFIG: ParentFieldConfig = {
+  name: 'parent',
+  displayName: 'Parent',
+  ancestors: {
+    ...DEFAULT_SECTION_CONFIG,
+    displayName: 'Ancestors',
+    maxDepth: 5,
+    initialDepth: 2
+  },
+  descendants: {
+    ...DEFAULT_SECTION_CONFIG,
+    displayName: 'Descendants',
+    maxDepth: 5,
+    initialDepth: 2
+  },
+  siblings: {
+    ...DEFAULT_SECTION_CONFIG,
+    displayName: 'Siblings',
+    sortOrder: 'alphabetical',
+    includeSelf: false
+  }
+};
+
+/**
+ * Default plugin settings
+ */
+export const DEFAULT_SETTINGS: ParentRelationSettings = {
+  parentFields: [DEFAULT_PARENT_FIELD_CONFIG],
+  defaultParentField: 'parent',
+  uiStyle: 'auto',
+  diagnosticMode: false
+};
+
+/**
+ * Validates a section configuration.
+ *
+ * @param config - The section config to validate
+ * @returns True if valid, false otherwise
+ */
+export function validateSectionConfig(config: Partial<SectionConfig>): boolean {
+  // Check for invalid depth values (must be >= 1 for initialDepth, >= 0 for maxDepth)
+  if (config.maxDepth !== undefined && config.maxDepth < 0) {
+    return false;
+  }
+
+  if (config.initialDepth !== undefined && config.initialDepth < 1) {
+    return false;
+  }
+
+  // Check that initialDepth doesn't exceed maxDepth
+  if (config.initialDepth !== undefined && config.maxDepth !== undefined) {
+    if (config.initialDepth > config.maxDepth) {
+      return false;
+    }
+  }
+
+  // Check that sortOrder is valid if provided
+  if (config.sortOrder !== undefined) {
+    const validSortOrders = ['alphabetical', 'created', 'modified'];
+    if (!validSortOrders.includes(config.sortOrder)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/**
+ * Validates a parent field configuration.
+ *
+ * @param config - The parent field config to validate
+ * @returns True if valid, false otherwise
+ */
+export function validateParentFieldConfig(config: Partial<ParentFieldConfig>): boolean {
+  // Field name is required and must not be empty
+  if (!config.name || config.name.trim() === '') {
+    return false;
+  }
+
+  // Validate each section config if present
+  if (config.ancestors && !validateSectionConfig(config.ancestors)) {
+    return false;
+  }
+
+  if (config.descendants && !validateSectionConfig(config.descendants)) {
+    return false;
+  }
+
+  if (config.siblings && !validateSectionConfig(config.siblings)) {
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * Validates plugin settings.
+ *
+ * @param settings - The settings to validate
+ * @returns True if valid, false otherwise
+ */
+export function validateSettings(settings: Partial<ParentRelationSettings>): boolean {
+  // Must have at least one parent field
+  if (!settings.parentFields || settings.parentFields.length === 0) {
+    return false;
+  }
+
+  // All parent fields must be valid
+  if (!settings.parentFields.every(validateParentFieldConfig)) {
+    return false;
+  }
+
+  // Check for duplicate field names
+  const fieldNames = settings.parentFields.map(f => f.name);
+  const uniqueNames = new Set(fieldNames);
+  if (fieldNames.length !== uniqueNames.size) {
+    return false;
+  }
+
+  // Default field must exist in the list
+  if (settings.defaultParentField) {
+    const hasDefaultField = settings.parentFields.some(
+      f => f.name === settings.defaultParentField
+    );
+    if (!hasDefaultField) {
+      return false;
+    }
+  }
+
+  // UI style must be valid if provided
+  if (settings.uiStyle) {
+    const validStyles = ['auto', 'segmented', 'dropdown'];
+    if (!validStyles.includes(settings.uiStyle)) {
+      return false;
+    }
+  }
+
+  return true;
+}

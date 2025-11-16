@@ -186,17 +186,18 @@ describe('TreeRenderer', () => {
 			expect(toggle.getAttribute('aria-expanded')).toBe('true');
 		});
 
-		it('should respect initiallyCollapsed option', () => {
-			const renderer = new TreeRenderer(mockApp, { initiallyCollapsed: true });
-
+		it('should respect initialDepth option', () => {
+			// With initialDepth = 1, only top level nodes are shown (children at depth 1 should be collapsed)
+			const renderer = new TreeRenderer(mockApp, { initialDepth: 1 });
+	
 			const nodeB = createTreeNode('B', 1);
 			const nodeA = createTreeNode('A', 0, [nodeB]);
-
+	
 			renderer.render(nodeA, container);
-
+	
 			const childrenContainer = container.querySelector('.relation-tree-children') as HTMLElement;
 			expect(childrenContainer.classList.contains('relation-tree-collapsed')).toBe(true);
-
+	
 			const toggle = container.querySelector('.relation-tree-toggle');
 			expect(toggle?.getAttribute('aria-expanded')).toBe('false');
 		});
@@ -486,7 +487,8 @@ describe('TreeRenderer', () => {
 
 	describe('Utility Methods', () => {
 		it('should expand all nodes', () => {
-			const renderer = new TreeRenderer(mockApp, { initiallyCollapsed: true });
+			// With initialDepth = 1, only top level nodes are shown (all children collapsed)
+			const renderer = new TreeRenderer(mockApp, { initialDepth: 1 });
 
 			// Tree with multiple levels
 			const nodeC = createTreeNode('C', 2);
@@ -495,11 +497,12 @@ describe('TreeRenderer', () => {
 
 			renderer.render(nodeA, container);
 
-			// Verify initially collapsed
+			// Verify initial state: all children collapsed with initialDepth = 1
 			const childrenContainers = container.querySelectorAll('.relation-tree-children');
-			childrenContainers.forEach(container => {
-				expect(container.classList.contains('relation-tree-collapsed')).toBe(true);
-			});
+			// First container (A->B) should be collapsed
+			expect(childrenContainers[0].classList.contains('relation-tree-collapsed')).toBe(true);
+			// Second container (B->C) should be collapsed
+			expect(childrenContainers[1].classList.contains('relation-tree-collapsed')).toBe(true);
 
 			// Expand all
 			renderer.expandAll();
@@ -511,24 +514,25 @@ describe('TreeRenderer', () => {
 		});
 
 		it('should collapse all nodes', () => {
-			const renderer = new TreeRenderer(mockApp, { initiallyCollapsed: false });
-
+			// With initialDepth = 3, all nodes up to depth 3 should be expanded initially
+			const renderer = new TreeRenderer(mockApp, { initialDepth: 3 });
+	
 			// Tree with multiple levels
 			const nodeC = createTreeNode('C', 2);
 			const nodeB = createTreeNode('B', 1, [nodeC]);
 			const nodeA = createTreeNode('A', 0, [nodeB]);
-
+	
 			renderer.render(nodeA, container);
-
+	
 			// Verify initially expanded
 			const childrenContainers = container.querySelectorAll('.relation-tree-children');
 			childrenContainers.forEach(container => {
 				expect(container.classList.contains('relation-tree-collapsed')).toBe(false);
 			});
-
+	
 			// Collapse all
 			renderer.collapseAll();
-
+	
 			// Verify all collapsed
 			childrenContainers.forEach(container => {
 				expect(container.classList.contains('relation-tree-collapsed')).toBe(true);

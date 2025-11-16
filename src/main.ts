@@ -1,4 +1,4 @@
-import { App, Plugin, PluginSettingTab, Setting, TFile, TAbstractFile, Notice } from 'obsidian';
+import { App, Plugin, PluginSettingTab, Setting, TFile, TAbstractFile, Notice, Modal } from 'obsidian';
 import { RelationGraph } from './relation-graph';
 import { RelationshipEngine } from './relationship-engine';
 import { DiagnosticSeverity } from './graph-validator';
@@ -12,65 +12,19 @@ import {
   FullLineageResult,
   RelationshipQueryOptions,
   ParentFieldConfig,
-  SectionConfig
+  SectionConfig,
+  ParentRelationSettings,
+  DEFAULT_SETTINGS,
+  DEFAULT_PARENT_FIELD_CONFIG,
+  validateSettings
 } from './types';
-
-/**
- * Plugin settings with multi-parent-field support
- */
-export interface ParentRelationSettings {
-  /** Array of configured parent fields */
-  parentFields: ParentFieldConfig[];
-
-  /** Which parent field to show by default when opening sidebar */
-  defaultParentField: string;
-
-  /** UI style preference: 'auto', 'segmented', or 'dropdown' */
-  uiStyle: 'auto' | 'segmented' | 'dropdown';
-
-  /** Diagnostic mode toggle */
-  diagnosticMode: boolean;
-}
-
-const DEFAULT_SECTION_CONFIG: SectionConfig = {
-  displayName: '',  // Will be set per section type
-  visible: true,
-  collapsed: false,
-  maxDepth: 5,
-  initialDepth: 2,
-  sortOrder: 'alphabetical',
-  includeSelf: false
-};
-
-const DEFAULT_PARENT_FIELD_CONFIG: ParentFieldConfig = {
-  name: 'parent',
-  displayName: 'Parent',
-  ancestors: {
-    ...DEFAULT_SECTION_CONFIG,
-    displayName: 'Ancestors',
-    maxDepth: 5,
-    initialDepth: 2
-  },
-  descendants: {
-    ...DEFAULT_SECTION_CONFIG,
-    displayName: 'Descendants',
-    maxDepth: 5,
-    initialDepth: 2
-  },
-  siblings: {
-    ...DEFAULT_SECTION_CONFIG,
-    displayName: 'Siblings',
-    sortOrder: 'alphabetical',
-    includeSelf: false
-  }
-};
-
-const DEFAULT_SETTINGS: ParentRelationSettings = {
-  parentFields: [DEFAULT_PARENT_FIELD_CONFIG],
-  defaultParentField: 'parent',
-  uiStyle: 'auto',
-  diagnosticMode: false
-};
+import { ParentFieldConfigForm } from './components/parent-field-config-form';
+import {
+  getPreset,
+  getPresetNames,
+  getPresetDescription,
+  getPresetMetadata
+} from './presets/field-configurations';
 
 export default class ParentRelationPlugin extends Plugin {
   settings!: ParentRelationSettings;
@@ -689,6 +643,8 @@ export default class ParentRelationPlugin extends Plugin {
 
 class ParentRelationSettingTab extends PluginSettingTab {
   plugin: ParentRelationPlugin;
+  private configForms: ParentFieldConfigForm[] = [];
+  private fieldCollapsedStates: Map<string, boolean> = new Map();
 
   constructor(app: App, plugin: ParentRelationPlugin) {
     super(app, plugin);
@@ -699,94 +655,224 @@ class ParentRelationSettingTab extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
 
+    // Clear any existing forms
+    this.configForms.forEach(form => form.destroy());
+    this.configForms = [];
+
     containerEl.createEl('h2', { text: 'Parent Relation Explorer Settings' });
 
-    // Parent Fields (comma-separated list)
-    let parentFieldsValue = this.plugin.settings.parentFields.map(f => f.name).join(', ');
+    // Import/Export section
+    this.renderImportExport(containerEl);
 
-    new Setting(containerEl)
-      .setName('Parent Fields')
-      .setDesc('Comma-separated list of frontmatter fields to track (e.g., "parent, project, category"). Click "Apply" to save changes.')
-      .addText(text => {
-        text
-          .setPlaceholder('parent, project, category')
-          .setValue(parentFieldsValue)
-          .onChange(value => {
-            // Just store the value, don't trigger rebuild yet
-            parentFieldsValue = value;
-          });
-      })
+    // Presets section
+    this.renderPresets(containerEl);
+
+    // Parent fields configuration
+    this.renderParentFieldsConfig(containerEl);
+
+    // Global settings
+    this.renderGlobalSettings(containerEl);
+  }
+
+  /**
+   * Renders import/export section.
+   */
+  private renderImportExport(containerEl: HTMLElement): void {
+    const section = containerEl.createDiv('settings-section');
+    section.createEl('h3', { text: 'Configuration Import/Export' });
+
+    new Setting(section)
+      .setName('Export Configuration')
+      .setDesc('Copy configuration to clipboard as JSON')
       .addButton(button => {
         button
-          .setButtonText('Apply')
+          .setButtonText('Export')
           .setCta()
           .onClick(async () => {
-            await this.handleParentFieldsChange(parentFieldsValue);
+            const json = JSON.stringify(this.plugin.settings, null, 2);
+            await navigator.clipboard.writeText(json);
+            new Notice('Configuration exported to clipboard');
           });
       });
 
-    // Default Parent Field
-    new Setting(containerEl)
+    new Setting(section)
+      .setName('Import Configuration')
+      .setDesc('Paste and import a JSON configuration')
+      .addButton(button => {
+        button
+          .setButtonText('Import')
+          .onClick(async () => {
+            try {
+              const json = await navigator.clipboard.readText();
+              const imported = JSON.parse(json);
+
+              if (validateSettings(imported)) {
+                this.plugin.settings = imported;
+                await this.plugin.saveSettings();
+                await this.rebuildGraphsAndEngines();
+                this.display(); // Refresh UI
+                new Notice('Configuration imported successfully');
+              } else {
+                new Notice('Invalid configuration format', 5000);
+              }
+            } catch (e) {
+              new Notice('Failed to parse JSON: ' + (e as Error).message, 5000);
+            }
+          });
+      });
+  }
+
+  /**
+   * Renders preset configurations section.
+   */
+  private renderPresets(containerEl: HTMLElement): void {
+    const section = containerEl.createDiv('settings-section');
+    section.createEl('h3', { text: 'Configuration Presets' });
+
+    const presetMetadata = getPresetMetadata();
+
+    new Setting(section)
+      .setName('Load Preset')
+      .setDesc('Load a predefined configuration template')
+      .addDropdown(dropdown => {
+        dropdown.addOption('', 'Select a preset...');
+        presetMetadata.forEach(({ name, description }) => {
+          dropdown.addOption(name, `${name}: ${description}`);
+        });
+        dropdown.onChange(async (value) => {
+          if (!value) return;
+
+          const preset = getPreset(value);
+          if (preset) {
+            const confirmed = await this.confirmLoadPreset(value);
+            if (confirmed) {
+              this.plugin.settings.parentFields = preset;
+              this.plugin.settings.defaultParentField = preset[0].name;
+              await this.plugin.saveSettings();
+              await this.rebuildGraphsAndEngines();
+              this.display();
+              new Notice(`Loaded preset: ${value}`);
+            }
+            // Reset dropdown to placeholder
+            dropdown.setValue('');
+          }
+        });
+      });
+  }
+
+  /**
+   * Confirms loading a preset (warns about overwriting).
+   */
+  private async confirmLoadPreset(presetName: string): Promise<boolean> {
+    return new Promise((resolve) => {
+      const modal = new Modal(this.app);
+      modal.titleEl.setText('Load Preset Configuration?');
+      modal.contentEl.createEl('p', {
+        text: `This will replace your current configuration with the "${presetName}" preset. This action cannot be undone unless you have exported your current configuration.`
+      });
+
+      const buttonContainer = modal.contentEl.createDiv('modal-button-container');
+
+      const cancelBtn = buttonContainer.createEl('button', { text: 'Cancel' });
+      cancelBtn.onclick = () => {
+        modal.close();
+        resolve(false);
+      };
+
+      const confirmBtn = buttonContainer.createEl('button', {
+        text: 'Load Preset',
+        cls: 'mod-cta'
+      });
+      confirmBtn.onclick = () => {
+        modal.close();
+        resolve(true);
+      };
+
+      modal.open();
+    });
+  }
+
+  /**
+   * Renders parent fields configuration section.
+   */
+  private renderParentFieldsConfig(containerEl: HTMLElement): void {
+    const section = containerEl.createDiv('settings-section');
+    section.createEl('h3', { text: 'Parent Fields' });
+
+    // Add field button
+    new Setting(section)
+      .setDesc('Configure parent fields with custom display names, visibility, and behavior')
+      .addButton(button => {
+        button
+          .setButtonText('+ Add Parent Field')
+          .setCta()
+          .onClick(() => {
+            this.addParentField();
+          });
+      });
+
+    // Render each field configuration
+    const fieldsContainer = section.createDiv('parent-fields-container');
+
+    this.plugin.settings.parentFields.forEach((config, index) => {
+      const formContainer = fieldsContainer.createDiv();
+      const initialCollapsed = this.fieldCollapsedStates.get(config.name) ?? true;
+      const form = new ParentFieldConfigForm(
+        formContainer,
+        config,
+        (updated) => this.updateFieldConfig(index, updated),
+        () => this.removeFieldConfig(index),
+        () => this.duplicateFieldConfig(index),
+        initialCollapsed,
+        (collapsed) => this.fieldCollapsedStates.set(config.name, collapsed)
+      );
+      form.render();
+      this.configForms.push(form);
+    });
+  }
+
+  /**
+   * Renders global settings section.
+   */
+  private renderGlobalSettings(containerEl: HTMLElement): void {
+    const section = containerEl.createDiv('settings-section');
+    section.createEl('h3', { text: 'Global Settings' });
+
+    new Setting(section)
       .setName('Default Parent Field')
-      .setDesc('Which parent field to show by default when opening the sidebar')
+      .setDesc('Which field to show by default when opening sidebar')
       .addDropdown(dropdown => {
         this.plugin.settings.parentFields.forEach(field => {
           dropdown.addOption(field.name, field.displayName || field.name);
         });
-
-        dropdown
-          .setValue(this.plugin.settings.defaultParentField)
-          .onChange(async value => {
-            this.plugin.settings.defaultParentField = value;
-            await this.plugin.saveSettings();
-          });
+        dropdown.setValue(this.plugin.settings.defaultParentField);
+        dropdown.onChange(async (value) => {
+          this.plugin.settings.defaultParentField = value;
+          await this.plugin.saveSettings();
+        });
       });
 
-    // UI Style
-    new Setting(containerEl)
+    new Setting(section)
       .setName('UI Style')
-      .setDesc('How to display parent field selector (Auto = segmented control for ≤4 fields, dropdown for >4)')
+      .setDesc('Parent field selector style (auto adapts based on count)')
       .addDropdown(dropdown => {
-        dropdown
-          .addOption('auto', 'Auto')
-          .addOption('segmented', 'Segmented Control')
-          .addOption('dropdown', 'Dropdown')
-          .setValue(this.plugin.settings.uiStyle)
-          .onChange(async value => {
-            this.plugin.settings.uiStyle = value as 'auto' | 'segmented' | 'dropdown';
-            await this.plugin.saveSettings();
-            this.plugin.refreshSidebarViews();
-          });
+        dropdown.addOption('auto', 'Auto (≤4: segmented, >4: dropdown)');
+        dropdown.addOption('segmented', 'Always Segmented Control');
+        dropdown.addOption('dropdown', 'Always Dropdown');
+        dropdown.setValue(this.plugin.settings.uiStyle);
+        dropdown.onChange(async (value) => {
+          this.plugin.settings.uiStyle = value as 'auto' | 'segmented' | 'dropdown';
+          await this.plugin.saveSettings();
+          this.plugin.refreshSidebarViews();
+        });
       });
 
-    // Max Depth (global for now, per-field in Milestone 4.2B)
-    new Setting(containerEl)
-      .setName('Max Depth')
-      .setDesc('Maximum depth for tree traversal (applies to all parent fields)')
-      .addText(text => text
-        .setPlaceholder('5')
-        .setValue(this.plugin.settings.parentFields[0]?.ancestors.maxDepth?.toString() || '5')
-        .onChange(async value => {
-          const num = parseInt(value);
-          if (!isNaN(num) && num > 0) {
-            // Update all field configs
-            this.plugin.settings.parentFields.forEach(field => {
-              field.ancestors.maxDepth = num;
-              field.descendants.maxDepth = num;
-            });
-            await this.plugin.saveSettings();
-            this.plugin.refreshSidebarViews();
-          }
-        })
-      );
-
-    // Diagnostic Mode
-    new Setting(containerEl)
+    new Setting(section)
       .setName('Diagnostic Mode')
-      .setDesc('Enable verbose logging for graph validation and diagnostics')
-      .addToggle(toggle => toggle
-        .setValue(this.plugin.settings.diagnosticMode)
-        .onChange(async (value) => {
+      .setDesc('Show diagnostic information in console')
+      .addToggle(toggle => {
+        toggle.setValue(this.plugin.settings.diagnosticMode);
+        toggle.onChange(async (value) => {
           this.plugin.settings.diagnosticMode = value;
           await this.plugin.saveSettings();
 
@@ -796,82 +882,92 @@ class ParentRelationSettingTab extends PluginSettingTab {
           } else {
             console.log('[Relations] Diagnostic mode disabled');
           }
-        })
-      );
+        });
+      });
   }
 
   /**
-   * Handles changes to parent fields list.
+   * Adds a new parent field configuration.
    */
-  private async handleParentFieldsChange(value: string): Promise<void> {
-    const fieldNames = value.split(',').map(s => s.trim()).filter(s => s.length > 0);
+  private async addParentField(): Promise<void> {
+    const newConfig: ParentFieldConfig = {
+      ...DEFAULT_PARENT_FIELD_CONFIG,
+      name: `field${this.plugin.settings.parentFields.length + 1}`,
+      displayName: `Field ${this.plugin.settings.parentFields.length + 1}`
+    };
 
-    if (fieldNames.length === 0) {
-      // Require at least one field
-      new Notice('At least one parent field is required');
+    this.plugin.settings.parentFields.push(newConfig);
+    await this.plugin.saveSettings();
+    await this.rebuildGraphsAndEngines();
+    this.display(); // Refresh UI
+  }
+
+  /**
+   * Updates a field configuration.
+   */
+  private async updateFieldConfig(index: number, config: ParentFieldConfig): Promise<void> {
+    this.plugin.settings.parentFields[index] = config;
+    await this.plugin.saveSettings();
+    await this.rebuildGraphsAndEngines();
+  }
+
+  /**
+   * Removes a field configuration.
+   */
+  private async removeFieldConfig(index: number): Promise<void> {
+    if (this.plugin.settings.parentFields.length <= 1) {
+      new Notice('Cannot remove the last parent field');
       return;
     }
 
-    // Check if field names actually changed
-    const currentFieldNames = this.plugin.settings.parentFields.map(f => f.name).sort();
-    const newFieldNames = [...fieldNames].sort();
+    const fieldName = this.plugin.settings.parentFields[index].name;
+    this.plugin.settings.parentFields.splice(index, 1);
 
-    if (currentFieldNames.length === newFieldNames.length &&
-        currentFieldNames.every((name, i) => name === newFieldNames[i])) {
-      // No change, skip expensive rebuild
-      return;
-    }
+    // Remove the collapsed state for this field
+    this.fieldCollapsedStates.delete(fieldName);
 
-    // Create new field configs
-    const newFields: ParentFieldConfig[] = fieldNames.map(name => {
-      // Try to preserve existing config if field already exists
-      const existingField = this.plugin.settings.parentFields.find(f => f.name === name);
-
-      if (existingField) {
-        return existingField;
-      }
-
-      // Create new field with defaults
-      return {
-        name,
-        displayName: name.charAt(0).toUpperCase() + name.slice(1),
-        ancestors: {
-          displayName: 'Ancestors',
-          visible: true,
-          collapsed: false,
-          maxDepth: 5,
-          initialDepth: 2
-        },
-        descendants: {
-          displayName: 'Descendants',
-          visible: true,
-          collapsed: false,
-          maxDepth: 5,
-          initialDepth: 2
-        },
-        siblings: {
-          displayName: 'Siblings',
-          visible: true,
-          collapsed: false,
-          sortOrder: 'alphabetical' as const,
-          includeSelf: false
-        }
-      };
-    });
-
-    this.plugin.settings.parentFields = newFields;
-
-    // Ensure default field is valid
-    if (!fieldNames.includes(this.plugin.settings.defaultParentField)) {
-      this.plugin.settings.defaultParentField = fieldNames[0];
+    // If we removed the default field, reset to first field
+    if (this.plugin.settings.defaultParentField === fieldName) {
+      this.plugin.settings.defaultParentField = this.plugin.settings.parentFields[0].name;
     }
 
     await this.plugin.saveSettings();
+    await this.rebuildGraphsAndEngines();
+    this.display(); // Refresh UI
+  }
 
-    // Rebuild graphs and engines
+  /**
+   * Duplicates a field configuration.
+   */
+  private async duplicateFieldConfig(index: number): Promise<void> {
+    const original = this.plugin.settings.parentFields[index];
+    const duplicate: ParentFieldConfig = JSON.parse(JSON.stringify(original));
+
+    // Make the name unique
+    duplicate.name = `${original.name}_copy`;
+    duplicate.displayName = `${original.displayName || original.name} (Copy)`;
+
+    // Copy the collapsed state from the original field
+    const originalCollapsedState = this.fieldCollapsedStates.get(original.name);
+    if (originalCollapsedState !== undefined) {
+      this.fieldCollapsedStates.set(duplicate.name, originalCollapsedState);
+    }
+
+    this.plugin.settings.parentFields.push(duplicate);
+    await this.plugin.saveSettings();
+    await this.rebuildGraphsAndEngines();
+    this.display(); // Refresh UI
+  }
+
+  /**
+   * Rebuilds all graphs and engines after configuration changes.
+   */
+  private async rebuildGraphsAndEngines(): Promise<void> {
+    // Clear existing graphs and engines
     this.plugin.relationGraphs.clear();
     this.plugin.relationshipEngines.clear();
 
+    // Rebuild for each field
     this.plugin.settings.parentFields.forEach(fieldConfig => {
       const graph = new RelationGraph(
         this.app,
@@ -890,8 +986,5 @@ class ParentRelationSettingTab extends PluginSettingTab {
 
     // Refresh sidebar
     this.plugin.refreshSidebarViews();
-
-    // Re-render settings to update dropdown
-    this.display();
   }
 }

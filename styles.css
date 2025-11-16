@@ -487,3 +487,154 @@
 .relation-sibling-name:hover {
   text-decoration: underline;
 }
+
+/* ============================================
+   Configuration Form Styles (Milestone 4.2B)
+   ============================================ */
+
+/* Settings sections */
+.settings-section {
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.settings-section:last-child {
+  border-bottom: none;
+}
+
+.settings-section h3 {
+  margin-top: 0;
+  margin-bottom: 12px;
+  color: var(--text-normal);
+  font-size: 1.1em;
+}
+
+/* Preset descriptions */
+.preset-descriptions {
+  margin-top: 8px;
+}
+
+.preset-descriptions p {
+  margin: 4px 0;
+  padding-left: 8px;
+}
+
+/* Parent fields container */
+.parent-fields-container {
+  margin-top: 12px;
+}
+
+/* Parent field configuration form */
+.parent-field-config {
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+
+.parent-field-config-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: var(--background-modifier-border-hover);
+  cursor: pointer;
+  user-select: none;
+}
+
+.parent-field-config-header:hover {
+  background: var(--background-modifier-border-focus);
+}
+
+.collapse-icon {
+  width: 20px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.config-title {
+  flex: 1;
+  font-weight: 500;
+  color: var(--text-normal);
+}
+
+.parent-field-config-header button {
+  margin: 0;
+  padding: 4px 12px;
+  flex-shrink: 0;
+}
+
+.parent-field-config-body {
+  padding: 16px;
+}
+
+/* Field settings */
+.field-settings {
+  margin-bottom: 20px;
+  padding: 12px;
+  background: var(--background-primary);
+  border-radius: 4px;
+}
+
+/* Section configuration */
+.section-config {
+  margin-top: 16px;
+  padding: 12px;
+  background: var(--background-primary);
+  border-left: 3px solid var(--interactive-accent);
+  border-radius: 4px;
+}
+
+.section-header {
+  margin-bottom: 12px;
+}
+
+.section-header h4 {
+  margin: 0;
+  padding: 0;
+  font-size: 1em;
+  color: var(--text-normal);
+}
+
+/* Configuration actions */
+.config-actions {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+/* Modal button container */
+.modal-button-container {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+.modal-button-container button {
+  margin: 0;
+}
+
+/* Setting item enhancements */
+.setting-item {
+  padding: 12px 0;
+}
+
+.setting-item-description {
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
+
+/* Spacing adjustments for configuration forms */
+.parent-field-config .setting-item {
+  border: none;
+}
+
+.parent-field-config .setting-item-control {
+  min-width: 200px;
+}

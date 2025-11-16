@@ -4,6 +4,7 @@ An Obsidian plugin for visualizing parent-child relationships between notes base
 
 ## Features
 
+### Core Functionality
 - **Multiple Parent Fields**: Track different types of hierarchies simultaneously (e.g., parent, project, category)
 - **Interactive Sidebar**: View ancestors, descendants, and siblings for the current note
 - **Field Switching**: Easily switch between different parent fields using a modern UI selector
@@ -11,7 +12,17 @@ An Obsidian plugin for visualizing parent-child relationships between notes base
 - **Flexible Relationship Tracking**: Define custom frontmatter fields to establish parent-child relationships
 - **Automatic Graph Building**: Automatically builds and maintains relationship graphs as you create and modify notes
 - **Cycle Detection**: Detects and reports circular relationships to prevent infinite traversals
-- **Configurable Settings**: Customize parent fields, UI style, and traversal depth
+
+### Advanced Per-Field Configuration (Milestone 4.2B)
+- **Custom Display Names**: Personalize field and section names (e.g., "Projects" instead of "parent")
+- **Section Visibility Control**: Show or hide ancestors, descendants, or siblings sections per field
+- **Initial Collapsed State**: Set default expanded/collapsed state for each section
+- **Configurable Depth**: Set max depth and initial unfold depth independently per section
+- **Siblings Sorting**: Sort siblings alphabetically, by creation date, or by modification date
+- **Include Self Option**: Choose whether to include the current file in siblings list
+- **Configuration Import/Export**: Backup and share your configurations as JSON
+- **Preset Configurations**: Quick setup with 5 built-in presets for common workflows
+- **Visual Configuration Editor**: Manage settings through an intuitive collapsible form interface
 
 ## Installation
 
@@ -68,12 +79,54 @@ The plugin will maintain separate relationship graphs for each field, allowing y
 
 ### Configuration
 
-Access plugin settings via Settings → Relation Explorer:
+Access plugin settings via Settings → Relation Explorer.
 
-- **Parent Fields**: Comma-separated list of frontmatter fields to track (e.g., "parent, project, category")
+#### Quick Start with Presets
+
+The plugin includes 5 preset configurations to get you started quickly:
+
+1. **simple-hierarchy** - Single parent field with standard sections (great for basic note hierarchies)
+2. **project-management** - Project and category hierarchies for PM workflows
+3. **knowledge-base** - Deep hierarchies optimized for knowledge management (Zettelkasten)
+4. **compact** - Minimal view with reduced sections for focused work
+5. **multi-field-explorer** - Three different hierarchies (parent, project, topic) for comprehensive organization
+
+To load a preset:
+1. Go to Settings → Relation Explorer
+2. Under "Configuration Presets", select a preset from the dropdown
+3. Confirm to load the preset configuration
+
+#### Advanced Per-Field Configuration
+
+Each parent field can be configured independently with:
+
+**Field Settings:**
+- **Field Name**: The frontmatter field name (e.g., "parent", "project")
+- **Display Name**: Optional friendly name shown in the UI
+
+**Section Settings** (for Ancestors, Descendants, and Siblings):
+- **Display Name**: Custom name for the section header
+- **Visible**: Show or hide this section in the sidebar
+- **Initially Collapsed**: Whether the section starts collapsed
+- **Max Depth** (ancestors/descendants only): Maximum traversal depth
+- **Initial Unfold Depth** (ancestors/descendants only): How many levels to show expanded
+- **Sort Order** (siblings only): Alphabetical, creation date, or modification date
+- **Include Self** (siblings only): Whether to show the current file in the siblings list
+
+#### Import/Export Configuration
+
+- **Export**: Save your configuration as JSON to clipboard
+- **Import**: Load a configuration from JSON (with validation)
+
+This allows you to:
+- Backup your configurations
+- Share configurations with others
+- Quickly switch between different setups
+
+#### Global Settings
+
 - **Default Parent Field**: Which field to show by default when opening the sidebar
 - **UI Style**: How to display the field selector (Auto/Segmented Control/Dropdown)
-- **Max Depth**: Maximum depth for relationship tree traversal (default: `5`)
 - **Diagnostic Mode**: Enable verbose logging for debugging
 
 ## How It Works

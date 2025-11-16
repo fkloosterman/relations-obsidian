@@ -7,6 +7,7 @@ An Obsidian plugin for visualizing parent-child relationships between notes base
 ### Core Functionality
 - **Multiple Parent Fields**: Track different types of hierarchies simultaneously (e.g., parent, project, category)
 - **Interactive Sidebar**: View ancestors, descendants, and siblings for the current note
+- **Embedded Relationship Trees**: Embed relationship trees directly in notes using `relation-tree` codeblocks
 - **Field Switching**: Easily switch between different parent fields using a modern UI selector
 - **Per-Field Pinning**: Pin the sidebar to specific notes independently for each parent field
 - **Flexible Relationship Tracking**: Define custom frontmatter fields to establish parent-child relationships
@@ -89,6 +90,120 @@ The plugin will maintain separate relationship graphs for each field, allowing y
 3. If you have multiple parent fields configured, use the field selector to switch between them
 4. Click the pin icon to keep the sidebar focused on a specific note
 5. Each section (Ancestors, Descendants, Siblings) can be expanded/collapsed independently
+
+### Embedding Relationship Trees in Notes
+
+You can embed relationship trees directly in your notes using `relation-tree` codeblocks. This allows you to visualize hierarchies inline with your content.
+
+#### Basic Usage
+
+Create a codeblock with the `relation-tree` type and specify parameters in YAML-style format:
+
+````markdown
+```relation-tree
+type: ancestors
+```
+````
+
+This displays the ancestor tree for the current note.
+
+#### Specifying a Target Note
+
+To show relationships for a different note:
+
+````markdown
+```relation-tree
+note: [[Project Alpha]]
+type: descendants
+depth: 3
+```
+````
+
+#### Available Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `note` | string | current note | Target note (wiki-link or file path) |
+| `type` | string | `ancestors` | Relationship type: `ancestors`, `descendants`, `siblings`, `cousins` |
+| `depth` | number | from settings | Maximum traversal depth (max: 100) |
+| `mode` | string | `tree` | Display mode: `tree`, `list`, `compact` |
+| `field` | string | default field | Parent field to use |
+| `showCycles` | boolean | `true` | Show cycle indicators |
+| `collapsed` | boolean | `false` | Start with tree collapsed |
+
+#### Display Modes
+
+**Tree Mode** (default):
+- Hierarchical tree with expand/collapse controls
+- Proper indentation showing parent-child relationships
+- Interactive navigation with clickable links
+
+**List Mode**:
+- Flat list of all results
+- No tree structure or toggles
+- Compact and simple
+
+**Compact Mode**:
+- Tree structure with minimal spacing
+- Reduced padding for dense layouts
+- Useful for overviews
+
+#### Examples
+
+**Show ancestors for a specific project:**
+````markdown
+```relation-tree
+note: [[Project Alpha]]
+type: ancestors
+mode: tree
+```
+````
+
+**Show descendants with limited depth:**
+````markdown
+```relation-tree
+type: descendants
+depth: 2
+mode: compact
+```
+````
+
+**Show siblings using a specific field:**
+````markdown
+```relation-tree
+type: siblings
+field: project
+mode: list
+```
+````
+
+**Show cousins with collapsed tree:**
+````markdown
+```relation-tree
+note: [[Research Note]]
+type: cousins
+collapsed: true
+```
+````
+
+**Use different parent field:**
+````markdown
+```relation-tree
+type: ancestors
+field: category
+depth: 5
+```
+````
+
+#### Error Handling
+
+If there's an issue with your codeblock parameters, you'll see an inline error message:
+
+- "Note not found" - The specified note doesn't exist
+- "Invalid field" - The specified parent field isn't configured
+- "Invalid parameter format" - Syntax error in your parameters
+
+All errors display with helpful context to fix the issue quickly.
 
 ### Configuration
 

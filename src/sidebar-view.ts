@@ -564,14 +564,22 @@ export class RelationSidebarView extends ItemView {
 					sidebarView: this
 				};
 
-				// Adjust tree depth to account for skipped root node
-				const adjustedTree = {
-					...tree,
-					children: tree.children.map(child => this.adjustTreeDepth(child, -1))
-				};
+				// Store context in renderer for context menu functionality
+				this.renderer['renderContext'] = renderContext;
 
-				// Render with context menu support
-				this.renderer.render(adjustedTree, content, renderContext);
+				// Attach context menu handler at container level if enabled
+				if (this.renderer['options'].enableContextMenu && this.contextMenuBuilder) {
+					this.renderer['attachContextMenuHandler'](content, renderContext);
+				}
+
+				// Render only the children, not the root node (current file)
+				// Adjust depth to remove indentation from skipped root
+				tree.children.forEach(childNode => {
+					const adjustedNode = this.adjustTreeDepth(childNode, -1);
+					// Use renderNode() directly to preserve collapse state across multiple nodes
+					const nodeElement = this.renderer['renderNode'](adjustedNode, 0);
+					content.appendChild(nodeElement);
+				});
 			} else {
 				// Show empty message for this section
 				const emptyMessage = content.createDiv('relation-section-empty');

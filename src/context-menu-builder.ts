@@ -482,6 +482,16 @@ export class ContextMenuBuilder {
 			});
 		}
 
+		// "Set as [Field] child" - For descendants (only if NOT a child) and siblings (always)
+		if ((section === 'descendants' && !isCurrentChild) || section === 'siblings') {
+			menu.addItem(item => {
+				item
+					.setTitle(`Set as ${parentFieldDisplayName} child`)
+					.setIcon('arrow-down')
+					.onClick(() => this.handleSetAsChild(context));
+			});
+		}
+
 		// "Remove as [Field] child" - Only if current file IS the parent of this node
 		if (section === 'descendants' && isCurrentChild) {
 			menu.addItem(item => {
@@ -526,6 +536,43 @@ export class ContextMenuBuilder {
 			sidebarView.refresh();
 		} else {
 			new Notice(`Failed to add parent: ${result.error}`);
+		}
+	}
+
+	/**
+	 * Handles "Set as [Field] child" action.
+	 *
+	 * Adds the current file as a child to the clicked node's frontmatter.
+	 * This is the inverse of "Set as parent".
+	 *
+	 * @param context - The advanced menu context
+	 */
+	private async handleSetAsChild(context: AdvancedMenuContext): Promise<void> {
+		const { file, frontmatterEditor, parentField, parentFieldDisplayName, sidebarView } = context;
+		const currentFile = this.app.workspace.getActiveFile();
+
+		if (!currentFile) {
+			new Notice('No active file');
+			return;
+		}
+
+		// Create wiki-link format for current file
+		const wikiLink = `[[${currentFile.basename}]]`;
+
+		// Add current file to clicked node's parent field
+		const result = await frontmatterEditor.addToField(
+			file,
+			parentField,
+			wikiLink,
+			{ createIfMissing: true }
+		);
+
+		if (result.success) {
+			new Notice(`Added as ${parentFieldDisplayName} child of "${file.basename}"`);
+			// Trigger sidebar refresh
+			sidebarView.refresh();
+		} else {
+			new Notice(`Failed to add child: ${result.error}`);
 		}
 	}
 

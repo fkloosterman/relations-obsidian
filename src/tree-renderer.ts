@@ -2,6 +2,7 @@ import { TFile, App } from 'obsidian';
 import { TreeNode } from './tree-model';
 import { ContextMenuBuilder } from './context-menu-builder';
 import type { RelationSidebarView } from './sidebar-view';
+import type ParentRelationPlugin from './main';
 
 /**
  * Configuration options for tree rendering
@@ -85,11 +86,14 @@ export class TreeRenderer {
 	private nodeStates: Map<string, NodeState> = new Map();
 	private contextMenuBuilder?: ContextMenuBuilder;
 	private renderContext?: TreeRenderContext;
+	private plugin?: ParentRelationPlugin;
 
 	constructor(
 		private app: App,
-		options: TreeRendererOptions = {}
+		options: TreeRendererOptions = {},
+		plugin?: ParentRelationPlugin
 	) {
+		this.plugin = plugin;
 		// Set defaults
 		this.options = {
 			collapsible: options.collapsible ?? true,
@@ -405,6 +409,11 @@ export class TreeRenderer {
 			e.preventDefault();
 			e.stopPropagation();
 
+			// Track this click for command palette commands (Milestone 4.3B Phase 4)
+			if (this.plugin && this.renderContext?.parentField) {
+				this.plugin.setLastClickedFile(file, this.renderContext.parentField);
+			}
+
 			// Check for modifier keys for different open modes
 			const newLeaf = e.ctrlKey || e.metaKey;
 
@@ -526,6 +535,11 @@ export class TreeRenderer {
 			const nodeData = this.getNodeDataFromElement(nodeEl);
 			if (!nodeData) return;
 
+			// Track this click for command palette commands (Milestone 4.3B Phase 4)
+			if (this.plugin && context.parentField) {
+				this.plugin.setLastClickedFile(nodeData.file, context.parentField);
+			}
+
 			// Build menu context
 			const menuContext = {
 				node: nodeData.node,
@@ -561,6 +575,11 @@ export class TreeRenderer {
 
 				const nodeData = this.getNodeDataFromElement(nodeEl);
 				if (!nodeData) return;
+
+				// Track this click for command palette commands (Milestone 4.3B Phase 4)
+				if (this.plugin && context.parentField) {
+					this.plugin.setLastClickedFile(nodeData.file, context.parentField);
+				}
 
 				// Build menu context (without mouse event)
 				const menuContext = {

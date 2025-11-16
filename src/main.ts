@@ -38,6 +38,10 @@ export default class ParentRelationPlugin extends Plugin {
   // Shared frontmatter cache
   frontmatterCache!: FrontmatterCache;
 
+  // Command infrastructure (Milestone 4.3B Phase 4)
+  private lastClickedFile: TFile | null = null;
+  private lastClickedParentField: string | null = null;
+
   async onload() {
     await this.loadSettings();
 
@@ -101,6 +105,9 @@ export default class ParentRelationPlugin extends Plugin {
         await this.toggleSidebar();
       }
     });
+
+    // Register advanced commands (Milestone 4.3B Phase 4)
+    this.registerCommands();
 
     this.addSettingTab(new ParentRelationSettingTab(this.app, this));
 
@@ -169,6 +176,132 @@ export default class ParentRelationPlugin extends Plugin {
    */
   getEngineForField(fieldName: string): RelationshipEngine | undefined {
     return this.relationshipEngines.get(fieldName);
+  }
+
+  //
+  // Command Infrastructure (Milestone 4.3B Phase 4)
+  //
+
+  /**
+   * Sets the last clicked file (called by tree renderer on node clicks).
+   *
+   * @param file - The file that was clicked
+   * @param parentField - The parent field context
+   */
+  setLastClickedFile(file: TFile, parentField: string): void {
+    this.lastClickedFile = file;
+    this.lastClickedParentField = parentField;
+  }
+
+  /**
+   * Gets the last clicked file in the tree.
+   *
+   * @returns The last clicked file, or null if none
+   */
+  getLastClickedFile(): TFile | null {
+    return this.lastClickedFile;
+  }
+
+  /**
+   * Gets the parent field context for the last clicked file.
+   *
+   * @returns The parent field name, or null if none
+   */
+  getCurrentParentField(): string | null {
+    return this.lastClickedParentField;
+  }
+
+  /**
+   * Gets the currently active sidebar view.
+   *
+   * @returns The active RelationSidebarView, or null if none
+   */
+  getActiveSidebarView(): RelationSidebarView | null {
+    const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_RELATION_SIDEBAR);
+    if (leaves.length === 0) return null;
+
+    // Return the most recently active sidebar view
+    // For now, return the first one (could be enhanced to track active view)
+    return leaves[0].view as RelationSidebarView;
+  }
+
+  /**
+   * Registers command palette commands for advanced features (Milestone 4.3B).
+   */
+  private registerCommands(): void {
+    // Pin clicked note
+    this.addCommand({
+      id: 'pin-clicked-note',
+      name: 'Pin clicked note in sidebar',
+      checkCallback: (checking: boolean) => {
+        const file = this.getLastClickedFile();
+        if (!file) return false;
+
+        if (!checking) {
+          const view = this.getActiveSidebarView();
+          if (view) {
+            view.pinToFile(file);
+            new Notice(`Pinned to ${file.basename}`);
+          }
+        }
+        return true;
+      }
+    });
+
+    // Copy link to clicked note
+    this.addCommand({
+      id: 'copy-link-to-clicked-note',
+      name: 'Copy link to clicked note',
+      checkCallback: (checking: boolean) => {
+        const file = this.getLastClickedFile();
+        if (!file) return false;
+
+        if (!checking) {
+          const link = `[[${file.basename}]]`;
+          navigator.clipboard.writeText(link);
+          new Notice('Link copied to clipboard');
+        }
+        return true;
+      }
+    });
+
+    // Expand all children of clicked note
+    this.addCommand({
+      id: 'expand-all-children-of-clicked-note',
+      name: 'Expand all children of clicked note',
+      checkCallback: (checking: boolean) => {
+        const file = this.getLastClickedFile();
+        const view = this.getActiveSidebarView();
+        if (!file || !view) return false;
+
+        if (!checking) {
+          const renderer = (view as any).renderer;
+          if (renderer) {
+            renderer.expandAllChildren(file.path);
+          }
+        }
+        return true;
+      }
+    });
+
+    // Collapse all children of clicked note
+    this.addCommand({
+      id: 'collapse-all-children-of-clicked-note',
+      name: 'Collapse all children of clicked note',
+      checkCallback: (checking: boolean) => {
+        const file = this.getLastClickedFile();
+        const view = this.getActiveSidebarView();
+        if (!file || !view) return false;
+
+        if (!checking) {
+          const renderer = (view as any).renderer;
+          if (renderer) {
+            renderer.collapseAllChildren(file.path);
+          }
+        }
+        return true;
+      }
+    });
   }
 
   onunload() {

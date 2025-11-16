@@ -77,7 +77,7 @@ export class RelationSidebarView extends ItemView {
 			enableContextMenu: true,
 			showCycleIndicators: true,
 			cssPrefix: 'relation-tree'
-		});
+		}, this.plugin);
 
 		// Connect context menu builder to renderer
 		this.renderer.setContextMenuBuilder(this.contextMenuBuilder);

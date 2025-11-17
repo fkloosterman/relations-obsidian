@@ -163,43 +163,50 @@ async function findPathToNote(
 	startFile: TFile,
 	fieldName: string
 ): Promise<void> {
-	const graph = plugin.getGraphForField(fieldName);
+	try {
+		const graph = plugin.getGraphForField(fieldName);
 
-	if (!graph) {
-		new Notice(`Parent field "${fieldName}" not found`);
-		return;
+		if (!graph) {
+			new Notice(`Parent field "${fieldName}" not found`);
+			return;
+		}
+
+		// Get all files for selection
+		const allFiles = graph.getAllFiles();
+		const otherFiles = allFiles.filter(f => f.path !== startFile.path);
+
+		if (otherFiles.length === 0) {
+			new Notice('No other notes in vault');
+			return;
+		}
+
+		// Prompt user to select target note
+		const targetFile = await selectNote(
+			plugin.app,
+			otherFiles,
+			`Select target note [${fieldName}]...`
+		);
+
+		if (!targetFile) {
+			// User cancelled
+			return;
+		}
+
+		// Find shortest path
+		const path = findShortestPath(startFile, targetFile, graph);
+
+		if (!path) {
+			new Notice(`No path found from ${startFile.basename} to ${targetFile.basename} in ${fieldName}`);
+			return;
+		}
+
+		// Display path
+		displayPath(plugin, path, fieldName);
+	} catch (error) {
+		console.error('Error in findPathToNote:', error);
+		const message = error instanceof Error ? error.message : String(error);
+		new Notice(`Error finding path: ${message}`);
 	}
-
-	// Get all files for selection
-	const allFiles = graph.getAllFiles();
-	const otherFiles = allFiles.filter(f => f.path !== startFile.path);
-
-	if (otherFiles.length === 0) {
-		new Notice('No other notes in vault');
-		return;
-	}
-
-	// Prompt user to select target note
-	const targetFile = await selectNote(
-		plugin.app,
-		otherFiles,
-		`Select target note [${fieldName}]...`
-	);
-
-	if (!targetFile) {
-		return; // User cancelled
-	}
-
-	// Find shortest path
-	const path = findShortestPath(startFile, targetFile, graph);
-
-	if (!path) {
-		new Notice(`No path found from ${startFile.basename} to ${targetFile.basename} in ${fieldName}`);
-		return;
-	}
-
-	// Display path
-	displayPath(plugin, path, fieldName);
 }
 
 /**

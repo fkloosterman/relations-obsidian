@@ -105,25 +105,38 @@ export function selectNote(
 	placeholder: string = 'Select a note...'
 ): Promise<TFile | null> {
 	return new Promise((resolve) => {
-		let resolved = false;
-
 		const modal = new NoteSelectionModal(
 			app,
 			notes,
 			placeholder,
 			(note) => {
-				resolved = true;
+				// Note was selected
 				resolve(note);
 			}
 		);
 
-		// Handle modal close without selection
-		const originalOnClose = modal.onClose.bind(modal);
-		modal.onClose = () => {
-			originalOnClose();
-			if (!resolved) {
+		// Override onClose to handle cancellation
+		const originalOnClose = modal.onClose;
+		let hasResolved = false;
+
+		modal.onClose = function() {
+			// Call original cleanup
+			if (originalOnClose) {
+				originalOnClose.call(this);
+			}
+
+			// If we haven't resolved yet, user cancelled
+			if (!hasResolved) {
+				hasResolved = true;
 				resolve(null);
 			}
+		};
+
+		// When selection happens, mark as resolved
+		const originalOnChooseItem = modal.onChooseItem;
+		modal.onChooseItem = function(note: TFile, evt: MouseEvent | KeyboardEvent) {
+			hasResolved = true;
+			originalOnChooseItem.call(this, note, evt);
 		};
 
 		modal.open();

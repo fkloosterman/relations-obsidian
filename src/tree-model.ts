@@ -44,6 +44,14 @@ export interface TreeNodeMetadata {
 	/** Whether this node should be initially collapsed */
 	collapsed?: boolean;
 
+	/** Cycle information if node is part of a cycle */
+	cycleInfo?: {
+		/** Full cycle path */
+		path: string[];
+		/** Cycle length */
+		length: number;
+	};
+
 	/** Custom data for extensions */
 	[key: string]: any;
 }
@@ -75,7 +83,8 @@ function createTreeNode(
 	file: TFile,
 	depth: number,
 	isCycle: boolean,
-	options: TreeBuildOptions
+	options: TreeBuildOptions,
+	graph?: RelationGraph
 ): TreeNode {
 	const metadata: TreeNodeMetadata = {};
 
@@ -83,11 +92,32 @@ function createTreeNode(
 		Object.assign(metadata, options.metadataProvider(file, depth));
 	}
 
-	// Add default cycle indicator
+	// Add default cycle indicator with enhanced information
 	if (isCycle && options.includeMetadata) {
 		metadata.icon = 'cycle';
-		metadata.tooltip = 'This note is part of a cycle';
 		metadata.className = (metadata.className || '') + ' is-cycle';
+
+		// Get detailed cycle information if graph is available
+		if (graph) {
+			const cycleInfo = graph.detectCycle(file);
+			if (cycleInfo && cycleInfo.cyclePath) {
+				// Store cycle path as basenames
+				metadata.cycleInfo = {
+					path: cycleInfo.cyclePath.map(f => f.basename),
+					length: cycleInfo.length
+				};
+
+				// Create enhanced tooltip
+				const cyclePath = cycleInfo.cyclePath.map(f => f.basename).join(' → ');
+				metadata.tooltip = `Cycle detected: ${cyclePath}\nLength: ${cycleInfo.length} note${cycleInfo.length === 1 ? '' : 's'}`;
+			} else {
+				// Fallback if cycle detection fails
+				metadata.tooltip = 'This note is part of a cycle';
+			}
+		} else {
+			// Fallback if graph not available
+			metadata.tooltip = 'This note is part of a cycle';
+		}
 	}
 
 	return {
@@ -115,8 +145,8 @@ function buildTreeFromGenerations(
 		? graph.detectCycle(file) !== null
 		: false;
 
-	// Create node
-	const node = createTreeNode(file, depth, isCycle, options);
+	// Create node (pass graph for enhanced cycle info)
+	const node = createTreeNode(file, depth, isCycle, options, graph);
 
 	// Check if we've reached max depth
 	const maxDepth = options.maxDepth ?? Infinity;

@@ -432,7 +432,7 @@ export class TreeRenderer {
 	}
 
 	/**
-	 * Renders a cycle indicator for a node.
+	 * Renders a cycle indicator for a node with enhanced tooltip showing full cycle path.
 	 *
 	 * @param element - Node content element
 	 * @param node - TreeNode data
@@ -440,11 +440,29 @@ export class TreeRenderer {
 	private renderCycleIndicator(element: HTMLElement, node: TreeNode): void {
 		const indicator = document.createElement('span');
 		indicator.classList.add(`${this.options.cssPrefix}-cycle-indicator`);
-		indicator.setAttribute('aria-label', 'This node is part of a cycle');
-		indicator.setAttribute('title', 'Cycle detected: This note is an ancestor of itself');
 
-		// Warning icon
-		indicator.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>';
+		// Use enhanced tooltip from metadata if available
+		let tooltipText = 'Cycle detected: This note is an ancestor of itself';
+		let ariaLabel = 'This node is part of a cycle';
+
+		if (node.metadata?.cycleInfo) {
+			// Enhanced tooltip with full cycle path
+			const cyclePath = node.metadata.cycleInfo.path.join(' → ');
+			tooltipText = `Cycle detected: ${cyclePath}\nLength: ${node.metadata.cycleInfo.length} note${node.metadata.cycleInfo.length === 1 ? '' : 's'}`;
+			ariaLabel = `Cycle: ${cyclePath}`;
+		} else if (node.metadata?.tooltip) {
+			// Use metadata tooltip if available
+			tooltipText = node.metadata.tooltip;
+		}
+
+		indicator.setAttribute('aria-label', ariaLabel);
+		indicator.setAttribute('title', tooltipText);
+
+		// Cycle icon (🔄)
+		indicator.textContent = '🔄';
+		indicator.style.marginLeft = '0.5em';
+		indicator.style.cursor = 'help';
+		indicator.style.fontSize = '0.9em';
 
 		element.appendChild(indicator);
 	}

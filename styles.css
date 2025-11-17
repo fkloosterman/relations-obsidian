@@ -1097,3 +1097,85 @@
 	border-color: var(--interactive-accent);
 }
 
+
+/* ============================================
+   Cycle Warning Styles (Milestone 8.1)
+   ============================================ */
+
+/* Cycle warning in codeblocks */
+.relation-codeblock-cycle-warning {
+	margin: var(--size-4-2) 0;
+	padding: var(--size-4-3);
+	background: var(--background-modifier-warning);
+	border: 1px solid var(--color-yellow);
+	border-radius: var(--radius-m);
+	display: flex;
+	gap: var(--size-4-2);
+	align-items: flex-start;
+}
+
+.relation-codeblock-cycle-warning-icon {
+	font-size: var(--font-ui-larger);
+	flex-shrink: 0;
+}
+
+.relation-codeblock-cycle-warning-message {
+	flex: 1;
+}
+
+.relation-codeblock-cycle-warning-message strong {
+	display: block;
+	margin-bottom: var(--size-2-1);
+	color: var(--text-warning);
+}
+
+.relation-codeblock-cycle-warning-details {
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+}
+
+.relation-codeblock-cycle-warning-details a {
+	color: var(--text-accent);
+	text-decoration: underline;
+	cursor: pointer;
+}
+
+.relation-codeblock-cycle-warning-details a:hover {
+	color: var(--text-accent-hover);
+}
+
+/* Enhanced cycle indicator styles */
+.relation-tree-cycle-indicator {
+	margin-left: 0.5em;
+	cursor: help;
+	opacity: 0.8;
+	transition: opacity 0.2s ease;
+}
+
+.relation-tree-cycle-indicator:hover {
+	opacity: 1;
+}
+
+.relation-codeblock-cycle-indicator {
+	margin-left: 0.5em;
+	cursor: help;
+	opacity: 0.8;
+	transition: opacity 0.2s ease;
+}
+
+.relation-codeblock-cycle-indicator:hover {
+	opacity: 1;
+}
+
+/* Cycle node highlighting */
+.relation-tree-node-content.is-cycle,
+.relation-codeblock-node-content.is-cycle {
+	background-color: var(--background-modifier-error-hover);
+	border-left: 2px solid var(--color-red);
+	padding-left: calc(var(--tree-depth, 0) * 20px + 2px);
+}
+
+.relation-tree-node-content.is-cycle:hover,
+.relation-codeblock-node-content.is-cycle:hover {
+	background-color: var(--background-modifier-error);
+}

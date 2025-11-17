@@ -186,8 +186,8 @@ export class CodeblockProcessor {
 				}
 			}
 
-			// Render tree
-			this.renderTree(el, finalTree, params, truncatedCount, filterFunction !== null, targetFile, fieldName);
+			// Render tree with cycle detection
+			this.renderTree(el, finalTree, params, truncatedCount, filterFunction !== null, targetFile, fieldName, graph);
 
 		} catch (error) {
 			if (error instanceof CodeblockValidationError) {
@@ -278,6 +278,7 @@ export class CodeblockProcessor {
 	 * @param hasFilters - Whether filters are active
 	 * @param targetFile - Target file for the tree (used in title)
 	 * @param fieldName - Name of the parent field being displayed
+	 * @param graph - Relation graph for cycle detection
 	 */
 	private renderTree(
 		container: HTMLElement,
@@ -286,7 +287,8 @@ export class CodeblockProcessor {
 		truncatedCount: number = 0,
 		hasFilters: boolean = false,
 		targetFile?: TFile,
-		fieldName?: string
+		fieldName?: string,
+		graph?: any
 	): void {
 		container.empty();
 		container.addClass('relation-codeblock-container');
@@ -345,6 +347,11 @@ export class CodeblockProcessor {
 			const truncationEl = container.createDiv('relation-codeblock-truncation');
 			truncationEl.setText(`(+${truncatedCount} more...)`);
 			truncationEl.setAttribute('title', `${truncatedCount} nodes hidden due to max-nodes limit`);
+		}
+
+		// Add cycle warning if cycles are detected and showCycles is enabled
+		if (params.showCycles !== false && tree && graph) {
+			this.renderCycleWarning(container, tree);
 		}
 	}
 
@@ -516,6 +523,68 @@ export class CodeblockProcessor {
 			const errorField = errorBox.createDiv('relation-codeblock-error-field');
 			errorField.setText(`Field: ${field}`);
 		}
+	}
+
+	/**
+	 * Renders cycle warning if the tree contains any cycles.
+	 *
+	 * @param container - Container element to render into
+	 * @param tree - Tree node(s) to check for cycles
+	 */
+	private renderCycleWarning(
+		container: HTMLElement,
+		tree: TreeNode | TreeNode[]
+	): void {
+		// Collect all cyclic nodes
+		const cyclicNodes: TreeNode[] = [];
+
+		const checkNode = (node: TreeNode): void => {
+			if (node.isCycle) {
+				cyclicNodes.push(node);
+			}
+			node.children.forEach(checkNode);
+		};
+
+		// Check all trees
+		if (Array.isArray(tree)) {
+			tree.forEach(checkNode);
+		} else {
+			checkNode(tree);
+		}
+
+		// Only render warning if cycles were found
+		if (cyclicNodes.length === 0) return;
+
+		// Create warning notice
+		const warning = container.createDiv('relation-codeblock-cycle-warning');
+
+		const icon = warning.createSpan('relation-codeblock-cycle-warning-icon');
+		icon.setText('⚠️');
+
+		const messageDiv = warning.createDiv('relation-codeblock-cycle-warning-message');
+
+		const title = messageDiv.createEl('strong');
+		title.setText('Cycle detected in this tree');
+
+		const details = messageDiv.createDiv('relation-codeblock-cycle-warning-details');
+		const noteText = cyclicNodes.length === 1
+			? '1 note in this tree is'
+			: `${cyclicNodes.length} notes in this tree are`;
+
+		details.setText(
+			`${noteText} part of a cycle. ` +
+			'Cyclic relationships may cause infinite traversals. '
+		);
+
+		const link = details.createEl('a', {
+			text: 'Learn about cycles →',
+			href: '#'
+		});
+
+		link.addEventListener('click', (e) => {
+			e.preventDefault();
+			window.open('https://github.com/fkloosterman/relations-obsidian/blob/main/docs/CYCLES-GUIDE.md');
+		});
 	}
 }
 

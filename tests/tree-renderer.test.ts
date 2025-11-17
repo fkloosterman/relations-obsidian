@@ -293,8 +293,7 @@ describe('TreeRenderer', () => {
 			renderer.render(node, container);
 
 			const indicator = container.querySelector('.relation-tree-cycle-indicator');
-			expect(indicator?.innerHTML).toContain('svg');
-			expect(indicator?.innerHTML).toContain('M10.29 3.86'); // Triangle path
+			expect(indicator?.textContent).toContain('🔄'); // Cycle emoji
 		});
 	});
 

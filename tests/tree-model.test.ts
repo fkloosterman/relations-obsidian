@@ -259,7 +259,7 @@ describe('Tree Data Model', () => {
 			expect(tree.isCycle).toBe(false);
 			expect(tree.children[0].isCycle).toBe(true);
 			expect(tree.children[0].metadata.icon).toBe('cycle');
-			expect(tree.children[0].metadata.tooltip).toContain('cycle');
+			expect(tree.children[0].metadata.tooltip).toContain('Cycle');
 		});
 
 		it('should respect maxDepth option', () => {

@@ -247,8 +247,7 @@ describe('Tree Data Model', () => {
 		});
 
 		it('should mark cycle nodes when detectCycles=true', () => {
-			// Test path-based cycle detection with a simple linear chain
-			// that includes a file marked as being in a cycle
+			// Test hybrid cycle detection: nodes are marked if they're in a global cycle
 			const { graph, files, engine } = createMockGraph(
 				[{ child: 'A', parents: ['B'] }],
 				['B']  // B is marked as being in a cycle globally
@@ -258,13 +257,11 @@ describe('Tree Data Model', () => {
 				detectCycles: true
 			});
 
-			// With path-based detection, B is NOT marked as a cycle because
-			// it doesn't appear twice in the path (A → B)
-			expect(tree.isCycle).toBe(false);  // Root A is not a cycle
-			expect(tree.children[0].isCycle).toBe(false);  // B is not a cycle in this path
-
-			// Even though graph.detectCycle(B) returns a cycle, path-based detection
-			// only marks nodes that appear twice in the current traversal path
+			// Hybrid detection: B is marked as a cycle because graph.detectCycle(B) returns a cycle
+			expect(tree.isCycle).toBe(false);  // Root A is not in any cycle
+			expect(tree.children[0].isCycle).toBe(true);  // B is in a global cycle
+			expect(tree.children[0].metadata.icon).toBe('cycle');
+			expect(tree.children[0].metadata.tooltip).toContain('Cycle');
 		});
 
 		it('should respect maxDepth option', () => {
@@ -370,8 +367,7 @@ describe('Tree Data Model', () => {
 		});
 
 		it('should mark cycle nodes', () => {
-			// Test that path-based detection doesn't mark nodes as cycles
-			// unless they appear twice in the current path
+			// Test that files in global cycle paths show the cycle icon
 			const { graph, files, engine } = createMockGraph(
 				[{ child: 'B', parents: ['A'] }],
 				['B']  // B is marked as being in a cycle globally
@@ -381,8 +377,8 @@ describe('Tree Data Model', () => {
 				detectCycles: true
 			});
 
-			// With path-based detection, B is NOT marked as a cycle in path A → B
-			expect(tree.children[0].isCycle).toBe(false);
+			// B is marked as a cycle because it's in a global cycle path
+			expect(tree.children[0].isCycle).toBe(true);
 		});
 	});
 
@@ -663,12 +659,10 @@ describe('Tree Data Model', () => {
 				detectCycles: true
 			});
 
-			// Path-based detection: B is not a cycle in path A → B
-			expect(tree.children[0].metadata.icon).not.toBe('cycle');
-			// className might be undefined or not contain 'is-cycle'
-			if (tree.children[0].metadata.className) {
-				expect(tree.children[0].metadata.className).not.toContain('is-cycle');
-			}
+			// B is marked as cycle because it's in a global cycle path
+			expect(tree.children[0].metadata.icon).toBe('cycle');
+			expect(tree.children[0].metadata.tooltip).toBeDefined();
+			expect(tree.children[0].metadata.className).toContain('is-cycle');
 		});
 
 		it('should merge custom metadata with cycle metadata', () => {
@@ -686,8 +680,8 @@ describe('Tree Data Model', () => {
 				})
 			});
 
-			// B is not a cycle in path A → B, but custom metadata is applied
-			expect(tree.children[0].metadata.icon).not.toBe('cycle');
+			// B is marked as cycle and custom metadata is merged
+			expect(tree.children[0].metadata.icon).toBe('cycle');
 			expect(tree.children[0].metadata.color).toBe('red');
 			expect(tree.children[0].metadata.custom).toBe('value');
 		});
@@ -768,9 +762,9 @@ describe('Tree Data Model', () => {
 				detectCycles: true
 			});
 
-			// Path: A → B → C (no duplicates, so no cycles marked)
-			expect(tree.children[0].isCycle).toBe(false);  // B
-			expect(tree.children[0].children[0].isCycle).toBe(false);  // C
+			// Path: A → B → C, where B and C are in global cycles
+			expect(tree.children[0].isCycle).toBe(true);  // B is in a global cycle
+			expect(tree.children[0].children[0].isCycle).toBe(true);  // C is in a global cycle
 		});
 	});
 

@@ -141,16 +141,29 @@ function buildTreeFromGenerations(
 	options: TreeBuildOptions,
 	visitedPath: Set<string> = new Set()
 ): TreeNode {
-	// Check if this file is part of a cycle IN THIS TREE (not globally)
-	// A cycle exists if we've seen this file before in the current path
-	const isCycle = options.detectCycles !== false && visitedPath.has(file.path);
+	// Cycle detection: only mark files that are directly part of a cycle path
+	// Check if this file appears twice in current traversal path
+	const isPathCycle = visitedPath.has(file.path);
+
+	// Check if file is part of a global cycle by checking the cycle path
+	let isInCyclePath = false;
+	if (options.detectCycles !== false && !isPathCycle) {
+		const globalCycleInfo = graph.detectCycle(file);
+		if (globalCycleInfo && globalCycleInfo.cyclePath) {
+			// File is marked as cycle only if it's IN the cycle path
+			isInCyclePath = globalCycleInfo.cyclePath.some(f => f.path === file.path);
+		}
+	}
+
+	// Mark as cycle if file is in a cycle path OR repeats in current path
+	const isCycle = options.detectCycles !== false && (isPathCycle || isInCyclePath);
 
 	// Create node (pass graph for enhanced cycle info)
 	const node = createTreeNode(file, depth, isCycle, options, graph);
 
-	// Check if we've reached max depth or detected a cycle (stop traversing)
+	// Check if we've reached max depth or detected a PATH cycle (stop traversing to prevent infinite loop)
 	const maxDepth = options.maxDepth ?? Infinity;
-	if (depth >= maxDepth || isCycle) {
+	if (depth >= maxDepth || isPathCycle) {
 		return node;
 	}
 

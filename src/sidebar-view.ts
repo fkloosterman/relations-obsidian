@@ -101,7 +101,7 @@ export class RelationSidebarView extends ItemView {
 	 * Returns the icon for the view.
 	 */
 	getIcon(): string {
-		return 'git-fork'; // Obsidian's built-in icon
+		return 'network'; // Unique icon for Relation Explorer
 	}
 
 	/**

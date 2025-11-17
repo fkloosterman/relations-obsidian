@@ -4,38 +4,47 @@ import { exportTreeToMarkdown } from '../utils/markdown-exporter';
 import { buildAncestorTree } from '../tree-model';
 
 /**
- * Registers utility commands.
+ * Registers utility commands for all configured parent fields.
  *
  * These commands provide utilities like graph validation
  * and tree export functionality.
+ *
+ * Commands are registered per-field, allowing users to validate and export
+ * different relationship graphs independently.
  */
 export function registerUtilityCommands(
 	plugin: ParentRelationPlugin
 ): void {
 	const { app } = plugin;
 
-	// Command: Validate relationship graph
-	plugin.addCommand({
-		id: 'validate-graph',
-		name: 'Validate relationship graph',
-		callback: () => {
-			validateGraph(plugin);
-		}
-	});
+	// Register commands for each configured parent field
+	plugin.settings.parentFields.forEach(fieldConfig => {
+		const fieldName = fieldConfig.name;
+		const fieldLabel = fieldConfig.displayName || fieldName;
 
-	// Command: Export tree as markdown
-	plugin.addCommand({
-		id: 'export-tree-markdown',
-		name: 'Export ancestor tree as markdown',
-		checkCallback: (checking: boolean) => {
-			const activeFile = app.workspace.getActiveFile();
-			if (!activeFile) return false;
-
-			if (!checking) {
-				exportTreeAsMarkdown(plugin, activeFile);
+		// Command: Validate relationship graph
+		plugin.addCommand({
+			id: `validate-graph-${fieldName}`,
+			name: `Validate graph [${fieldLabel}]`,
+			callback: () => {
+				validateGraph(plugin, fieldName);
 			}
-			return true;
-		}
+		});
+
+		// Command: Export tree as markdown
+		plugin.addCommand({
+			id: `export-tree-markdown-${fieldName}`,
+			name: `Export ancestor tree [${fieldLabel}]`,
+			checkCallback: (checking: boolean) => {
+				const activeFile = app.workspace.getActiveFile();
+				if (!activeFile) return false;
+
+				if (!checking) {
+					exportTreeAsMarkdown(plugin, activeFile, fieldName);
+				}
+				return true;
+			}
+		});
 	});
 }
 
@@ -45,9 +54,9 @@ export function registerUtilityCommands(
  * Checks for cycles, orphaned nodes, and other graph issues.
  *
  * @param plugin - Plugin instance
+ * @param fieldName - Parent field to validate
  */
-function validateGraph(plugin: ParentRelationPlugin): void {
-	const fieldName = plugin.settings.defaultParentField;
+function validateGraph(plugin: ParentRelationPlugin, fieldName: string): void {
 	const graph = plugin.getGraphForField(fieldName);
 
 	if (!graph) {
@@ -98,11 +107,11 @@ function validateGraph(plugin: ParentRelationPlugin): void {
 	// Show summary notice
 	if (errors.length > 0 || warnings.length > 0) {
 		new Notice(
-			`Graph validation: ${errors.length} error${errors.length !== 1 ? 's' : ''}, ${warnings.length} warning${warnings.length !== 1 ? 's' : ''}. Check console for details.`,
+			`Graph validation [${fieldName}]: ${errors.length} error${errors.length !== 1 ? 's' : ''}, ${warnings.length} warning${warnings.length !== 1 ? 's' : ''}. Check console for details.`,
 			5000
 		);
 	} else {
-		new Notice('Graph validation passed! No errors or warnings found.');
+		new Notice(`Graph validation [${fieldName}] passed! No errors or warnings found.`);
 	}
 }
 
@@ -114,12 +123,13 @@ function validateGraph(plugin: ParentRelationPlugin): void {
  *
  * @param plugin - Plugin instance
  * @param file - File to export tree for
+ * @param fieldName - Parent field to use
  */
 async function exportTreeAsMarkdown(
 	plugin: ParentRelationPlugin,
-	file: TFile
+	file: TFile,
+	fieldName: string
 ): Promise<void> {
-	const fieldName = plugin.settings.defaultParentField;
 	const graph = plugin.getGraphForField(fieldName);
 	const engine = plugin.getEngineForField(fieldName);
 
@@ -138,7 +148,7 @@ async function exportTreeAsMarkdown(
 	// Export to markdown
 	const markdown = exportTreeToMarkdown(
 		tree,
-		`Ancestors of ${file.basename}`,
+		`Ancestors of ${file.basename} [${fieldName}]`,
 		{
 			useWikiLinks: true,
 			showCycles: true,
@@ -149,7 +159,7 @@ async function exportTreeAsMarkdown(
 	// Copy to clipboard
 	try {
 		await navigator.clipboard.writeText(markdown);
-		new Notice('Ancestor tree exported to clipboard!');
+		new Notice(`Ancestor tree [${fieldName}] exported to clipboard!`);
 	} catch (error) {
 		console.error('Failed to copy to clipboard:', error);
 		new Notice('Failed to copy to clipboard. Check console for details.');

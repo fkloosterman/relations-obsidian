@@ -6,59 +6,68 @@ import { findShortestPath, NotePath } from '../utils/path-finder';
 import { exportPathToMarkdown } from '../utils/markdown-exporter';
 
 /**
- * Registers advanced navigation commands.
+ * Registers advanced navigation commands for all configured parent fields.
  *
  * These commands provide sophisticated navigation through the relationship
  * graph, including siblings, cousins, and path finding.
+ *
+ * Commands are registered per-field, allowing users to navigate different
+ * relationship graphs independently.
  */
 export function registerAdvancedNavigationCommands(
 	plugin: ParentRelationPlugin
 ): void {
 	const { app } = plugin;
 
-	// Command: Show siblings of current note
-	plugin.addCommand({
-		id: 'show-siblings',
-		name: 'Show siblings of current note',
-		checkCallback: (checking: boolean) => {
-			const activeFile = app.workspace.getActiveFile();
-			if (!activeFile) return false;
+	// Register commands for each configured parent field
+	plugin.settings.parentFields.forEach(fieldConfig => {
+		const fieldName = fieldConfig.name;
+		const fieldLabel = fieldConfig.displayName || fieldName;
 
-			if (!checking) {
-				showSiblings(plugin, activeFile);
+		// Command: Show siblings of current note
+		plugin.addCommand({
+			id: `show-siblings-${fieldName}`,
+			name: `Show siblings [${fieldLabel}]`,
+			checkCallback: (checking: boolean) => {
+				const activeFile = app.workspace.getActiveFile();
+				if (!activeFile) return false;
+
+				if (!checking) {
+					showSiblings(plugin, activeFile, fieldName);
+				}
+				return true;
 			}
-			return true;
-		}
-	});
+		});
 
-	// Command: Show cousins of current note
-	plugin.addCommand({
-		id: 'show-cousins',
-		name: 'Show cousins of current note',
-		checkCallback: (checking: boolean) => {
-			const activeFile = app.workspace.getActiveFile();
-			if (!activeFile) return false;
+		// Command: Show cousins of current note
+		plugin.addCommand({
+			id: `show-cousins-${fieldName}`,
+			name: `Show cousins [${fieldLabel}]`,
+			checkCallback: (checking: boolean) => {
+				const activeFile = app.workspace.getActiveFile();
+				if (!activeFile) return false;
 
-			if (!checking) {
-				showCousins(plugin, activeFile);
+				if (!checking) {
+					showCousins(plugin, activeFile, fieldName);
+				}
+				return true;
 			}
-			return true;
-		}
-	});
+		});
 
-	// Command: Find shortest path to note
-	plugin.addCommand({
-		id: 'find-path-to-note',
-		name: 'Find shortest path to note',
-		checkCallback: (checking: boolean) => {
-			const activeFile = app.workspace.getActiveFile();
-			if (!activeFile) return false;
+		// Command: Find shortest path to note
+		plugin.addCommand({
+			id: `find-path-to-note-${fieldName}`,
+			name: `Find shortest path [${fieldLabel}]`,
+			checkCallback: (checking: boolean) => {
+				const activeFile = app.workspace.getActiveFile();
+				if (!activeFile) return false;
 
-			if (!checking) {
-				findPathToNote(plugin, activeFile);
+				if (!checking) {
+					findPathToNote(plugin, activeFile, fieldName);
+				}
+				return true;
 			}
-			return true;
-		}
+		});
 	});
 }
 
@@ -69,12 +78,13 @@ export function registerAdvancedNavigationCommands(
  *
  * @param plugin - Plugin instance
  * @param file - File to find siblings for
+ * @param fieldName - Parent field to use
  */
 async function showSiblings(
 	plugin: ParentRelationPlugin,
-	file: TFile
+	file: TFile,
+	fieldName: string
 ): Promise<void> {
-	const fieldName = plugin.settings.defaultParentField;
 	const engine = plugin.getEngineForField(fieldName);
 
 	if (!engine) {
@@ -85,14 +95,14 @@ async function showSiblings(
 	const siblings = engine.getSiblings(file, false); // Exclude self
 
 	if (siblings.length === 0) {
-		new Notice(`${file.basename} has no siblings`);
+		new Notice(`${file.basename} has no siblings in ${fieldName}`);
 		return;
 	}
 
 	showResults(
 		plugin.app,
 		siblings,
-		`Siblings of ${file.basename} (${siblings.length})`,
+		`Siblings of ${file.basename} [${fieldName}] (${siblings.length})`,
 		(note) => {
 			// Open note when selected
 			plugin.app.workspace.getLeaf().openFile(note);
@@ -107,12 +117,13 @@ async function showSiblings(
  *
  * @param plugin - Plugin instance
  * @param file - File to find cousins for
+ * @param fieldName - Parent field to use
  */
 async function showCousins(
 	plugin: ParentRelationPlugin,
-	file: TFile
+	file: TFile,
+	fieldName: string
 ): Promise<void> {
-	const fieldName = plugin.settings.defaultParentField;
 	const engine = plugin.getEngineForField(fieldName);
 
 	if (!engine) {
@@ -123,14 +134,14 @@ async function showCousins(
 	const cousins = engine.getCousins(file, 1); // First cousins
 
 	if (cousins.length === 0) {
-		new Notice(`${file.basename} has no cousins`);
+		new Notice(`${file.basename} has no cousins in ${fieldName}`);
 		return;
 	}
 
 	showResults(
 		plugin.app,
 		cousins,
-		`Cousins of ${file.basename} (${cousins.length})`,
+		`Cousins of ${file.basename} [${fieldName}] (${cousins.length})`,
 		(note) => {
 			// Open note when selected
 			plugin.app.workspace.getLeaf().openFile(note);
@@ -145,12 +156,13 @@ async function showCousins(
  *
  * @param plugin - Plugin instance
  * @param startFile - Starting file
+ * @param fieldName - Parent field to use
  */
 async function findPathToNote(
 	plugin: ParentRelationPlugin,
-	startFile: TFile
+	startFile: TFile,
+	fieldName: string
 ): Promise<void> {
-	const fieldName = plugin.settings.defaultParentField;
 	const graph = plugin.getGraphForField(fieldName);
 
 	if (!graph) {
@@ -171,7 +183,7 @@ async function findPathToNote(
 	const targetFile = await selectNote(
 		plugin.app,
 		otherFiles,
-		'Select target note...'
+		`Select target note [${fieldName}]...`
 	);
 
 	if (!targetFile) {
@@ -182,12 +194,12 @@ async function findPathToNote(
 	const path = findShortestPath(startFile, targetFile, graph);
 
 	if (!path) {
-		new Notice(`No path found from ${startFile.basename} to ${targetFile.basename}`);
+		new Notice(`No path found from ${startFile.basename} to ${targetFile.basename} in ${fieldName}`);
 		return;
 	}
 
 	// Display path
-	displayPath(plugin, path);
+	displayPath(plugin, path, fieldName);
 }
 
 /**
@@ -195,12 +207,13 @@ async function findPathToNote(
  *
  * @param plugin - Plugin instance
  * @param path - Path to display
+ * @param fieldName - Parent field used
  */
-function displayPath(plugin: ParentRelationPlugin, path: NotePath): void {
+function displayPath(plugin: ParentRelationPlugin, path: NotePath, fieldName: string): void {
 	const pathMarkdown = exportPathToMarkdown(path.path, { useWikiLinks: false });
 
 	const message = [
-		`Path from ${path.start.basename} to ${path.end.basename}`,
+		`Path from ${path.start.basename} to ${path.end.basename} [${fieldName}]`,
 		`Length: ${path.length} (${path.direction})`,
 		``,
 		pathMarkdown

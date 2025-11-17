@@ -60,6 +60,102 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Full JSDoc documentation
 - Accessible UI following ARIA best practices
 
+### Added - Milestone 6.2: Advanced Navigation & Analysis Commands
+
+#### Advanced Navigation Commands
+- **Show siblings [FieldName]**: Find notes sharing the same parent
+  - Opens filterable results modal
+  - Shows count of siblings found
+  - Click to navigate to any sibling
+  - Per-field variants for multi-graph support
+- **Show cousins [FieldName]**: Find first cousins (same grandparent, different parent)
+  - Displays notes at same hierarchy level in different branches
+  - Filterable results modal with count
+  - Useful for discovering related work
+- **Find shortest path [FieldName]**: Discover connection between any two notes
+  - Interactive note selection modal for target
+  - BFS algorithm finds optimal path
+  - Displays path in Notice: `A → B → C → Target`
+  - Shows path length and direction (up/down/mixed)
+  - Path visible for 10 seconds
+
+#### Graph Analysis Commands
+- **Show root notes [FieldName]**: List top-level notes in hierarchy
+  - Finds notes with no parents but at least one child
+  - Excludes isolated notes (no relationships)
+  - Filterable results modal
+  - Useful for finding entry points to knowledge graph
+- **Show leaf notes [FieldName]**: List bottom-level notes in hierarchy
+  - Finds notes with no children but at least one parent
+  - Excludes isolated notes
+  - Filterable results modal
+  - Useful for finding notes needing expansion
+- **Show graph statistics [FieldName]**: View comprehensive graph metrics
+  - Total nodes and edges
+  - Root and leaf counts
+  - Maximum depth and breadth
+  - Cycle count
+  - Average children per note
+  - Displays in Notice with formatted output
+
+#### Utility Commands
+- **Validate graph [FieldName]**: Check graph health and integrity
+  - Detects cycles in relationships
+  - Finds orphaned references and broken links
+  - Console output with severity levels (error/warning/info)
+  - Summary Notice with counts
+  - Context provided for each issue
+- **Export ancestor tree [FieldName]**: Export tree as markdown
+  - Copies formatted tree to clipboard
+  - Uses wiki-links for easy pasting
+  - Includes cycle indicators (🔄)
+  - Preserves hierarchy with indentation
+  - Maximum depth: 10 levels
+  - Ready to paste into documentation
+
+#### Interactive Modals
+- **Results Modal**: Filterable list for multi-result commands
+  - Real-time search filtering
+  - Shows total count and filtered count
+  - Full file paths on hover
+  - Click any note to navigate
+  - Keyboard support (type to filter, Escape to close)
+- **Note Selection Modal**: Enhanced for path finding
+  - Fuzzy search for target note
+  - Promise-based API for async operations
+  - Fixed Obsidian modal lifecycle timing issue
+  - Proper cancellation handling
+
+#### Multi-Field Architecture
+- All commands registered **per parent field**
+- Field-specific labels (e.g., "Show siblings [Parent]", "Show siblings [Project]")
+- Independent graph analysis for each relationship type
+- Seamless context switching between fields
+- Refactored basic navigation commands for multi-field support
+
+#### Bug Fixes
+- Fixed Promise resolution timing in note selection modal (Obsidian calls `onClose` before `onChooseItem`)
+- Fixed root notes showing isolated notes (now requires children)
+- Fixed leaf notes showing isolated notes (now requires parents)
+- Removed confusing "clicked note" commands
+- Removed confusing sidebar tree commands (replaced by multi-field variants)
+
+#### Technical Implementation
+- Created `src/commands/advanced-navigation.ts` with siblings, cousins, path finding
+- Created `src/commands/graph-analysis.ts` with root/leaf detection and statistics
+- Created `src/commands/utility-commands.ts` with validation and export
+- Created `src/utils/path-finder.ts` with BFS shortest path algorithm
+- Created `src/utils/graph-analyzer.ts` with root/leaf detection and statistics computation
+- Created `src/utils/markdown-exporter.ts` with tree and path formatting
+- Created `src/modals/note-selection-modal.ts` with fuzzy search and Promise API
+- Created `src/modals/results-modal.ts` with filtering and navigation
+- Refactored `src/commands/navigation-commands.ts` for per-field registration
+- Updated `src/utils/graph-analyzer.ts` to exclude isolated notes
+- Removed obsolete test file `tests/commands/navigation-commands.test.ts`
+- Comprehensive test coverage - all 765 tests passing
+- Full JSDoc documentation with examples
+- Production-ready code (debug logging removed)
+
 ### Added - Milestone 5.2: Advanced Codeblock Options
 
 #### Title Display

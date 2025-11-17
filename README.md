@@ -50,12 +50,6 @@ An Obsidian plugin for visualizing parent-child relationships between notes base
 - **Quick Navigation**: Navigate to parent or child notes instantly from the command palette
   - Go to parent note - Navigate directly to single parent, or choose from multiple
   - Go to child note - Navigate directly to single child, or choose from multiple
-- **Sidebar Display**: Show specific relationship trees in the sidebar
-  - Show parent tree in sidebar - Display only ancestors
-  - Show child tree in sidebar - Display only descendants
-  - Show full lineage in sidebar - Display all relationships (ancestors, descendants, siblings)
-- **Sidebar Control**: Toggle sidebar visibility with a single command
-  - Toggle relation sidebar - Open if closed, close if open
 - **Smart Selection**: Modal selector for multiple parents/children
   - Full keyboard navigation (Enter/Space to select, arrows to navigate)
   - Displays note names and folder paths
@@ -63,6 +57,27 @@ An Obsidian plugin for visualizing parent-child relationships between notes base
 - **Keyboard Shortcuts**: All commands support custom keyboard shortcuts
   - Assign shortcuts via Obsidian Settings → Hotkeys
   - Search for "relation" to find all plugin commands
+
+### Advanced Navigation & Analysis (Milestone 6.2)
+- **Relationship Discovery**: Explore extended relationships in your vault
+  - Show siblings - Find notes sharing the same parent
+  - Show cousins - Find notes at the same hierarchy level in different branches
+  - Find shortest path - Discover how any two notes are connected
+- **Graph Analysis**: Understand your vault's structure
+  - Show root notes - Find top-level notes (no parents, have children)
+  - Show leaf notes - Find bottom-level notes (no children, have parents)
+  - Show graph statistics - View comprehensive metrics about your hierarchy
+- **Validation & Export**: Maintain and share your knowledge graph
+  - Validate graph - Check for cycles, broken links, and orphaned references
+  - Export ancestor tree - Copy formatted markdown tree to clipboard
+- **Interactive Modals**: Filter and navigate results efficiently
+  - Real-time search filtering
+  - Clickable note lists with full paths
+  - Keyboard navigation support
+- **Multi-Field Support**: All commands work per parent field
+  - Independent analysis of each relationship type
+  - Field-specific labels (e.g., "Show siblings [Project]")
+  - Switch contexts seamlessly
 
 ## Installation
 
@@ -186,6 +201,150 @@ When navigating to parents or children and multiple options are available, a sel
 The modal displays:
 - Note name (prominently)
 - Folder path (in smaller text, if not in root folder)
+
+### Advanced Navigation Commands (Milestone 6.2)
+
+The plugin provides powerful advanced navigation and analysis commands. **All commands support multiple parent fields** - they are registered per-field with field-specific labels (e.g., "Show siblings [Parent]", "Show siblings [Project]").
+
+#### Advanced Navigation
+
+**Show siblings [FieldName]**
+- Displays all notes that share the same parent(s) as the current note
+- Opens a filterable results modal with clickable note list
+- Shows count of siblings found
+- Click any note to open it
+- Only available when note has siblings
+
+**Show cousins [FieldName]**
+- Displays first cousins (notes sharing the same grandparent)
+- Opens a filterable results modal
+- Cousins are notes at the same "family level" but different branches
+- Only available when note has cousins
+
+**Find shortest path [FieldName]**
+- Find the shortest path between the current note and any other note
+- Opens a note selection modal to choose target note
+- Uses breadth-first search to find optimal path
+- Displays path in a Notice with length and direction (up/down/mixed)
+- Shows path as: `Note A → Note B → Note C → Target`
+- Path remains visible for 10 seconds
+
+#### Graph Analysis
+
+**Show root notes [FieldName]**
+- Displays all notes with no parents but at least one child
+- These are top-level notes in your hierarchy
+- Opens filterable results modal with count
+- Useful for finding entry points to your knowledge graph
+- Excludes isolated notes (notes with neither parents nor children)
+
+**Show leaf notes [FieldName]**
+- Displays all notes with no children but at least one parent
+- These are bottom-level notes in your hierarchy
+- Opens filterable results modal with count
+- Useful for finding notes that need expansion
+- Excludes isolated notes
+
+**Show graph statistics [FieldName]**
+- Displays comprehensive graph metrics in a Notice
+- Statistics include:
+  - Total nodes (notes)
+  - Total edges (parent-child relationships)
+  - Number of root notes
+  - Number of leaf notes
+  - Maximum depth from any root
+  - Maximum breadth (most children any note has)
+  - Number of cycles detected
+  - Average children per note
+- Useful for understanding your vault structure
+
+#### Utility Commands
+
+**Validate graph [FieldName]**
+- Runs comprehensive graph validation
+- Checks for cycles, orphaned references, and broken links
+- Displays results in console with severity levels:
+  - Errors (red): Critical issues requiring attention
+  - Warnings (yellow): Potential problems
+  - Info (blue): Informational messages
+- Shows summary Notice with total errors and warnings
+- Console output includes context for each issue
+
+**Export ancestor tree [FieldName]**
+- Exports the current note's ancestor tree as markdown
+- Copies formatted tree to clipboard
+- Uses wiki-links for note references
+- Includes cycle indicators (🔄) if cycles detected
+- Tree format preserves hierarchy with indentation:
+  ```markdown
+  # Ancestors of Current Note [Parent]
+
+  - [[Current Note]]
+    - [[Parent Note]]
+      - [[Grandparent Note]]
+  ```
+- Maximum depth: 10 levels
+- Ready to paste into any note
+
+#### Results Modal Features
+
+When commands display multiple results (siblings, cousins, roots, leaves), they use an interactive modal:
+
+**Features:**
+- **Filter Input**: Type to filter results in real-time
+- **Note Count**: Shows total results matching filter
+- **Clickable List**: Click any note to open it
+- **Full Paths**: Hover to see complete file path
+- **Keyboard Navigation**:
+  - Type to filter
+  - Click to select
+  - `Escape` to close
+- **Responsive**: Updates instantly as you type
+
+**Example Usage:**
+1. Run "Show leaf notes [Parent]"
+2. See "Leaf Notes (42)" with search box
+3. Type "project" to filter to project-related leaves
+4. Click any note to navigate to it
+
+#### Multi-Field Support
+
+All advanced commands are registered **per parent field**. If you have multiple parent fields configured (e.g., "parent", "project", "category"), you'll see separate commands for each:
+
+- Show siblings [Parent]
+- Show siblings [Project]
+- Show siblings [Category]
+- Find shortest path [Parent]
+- Find shortest path [Project]
+- ... and so on
+
+This allows you to analyze different relationship graphs independently.
+
+#### Practical Examples
+
+**Finding Related Work:**
+1. Open a note in your "Projects" hierarchy
+2. Run "Show cousins [Project]"
+3. See related projects at the same level
+4. Navigate to explore parallel work
+
+**Understanding Connections:**
+1. Wonder how two notes are related?
+2. Run "Find shortest path [Parent]"
+3. Select target note from list
+4. See exact connection path displayed
+
+**Graph Health Check:**
+1. Run "Validate graph [Parent]"
+2. Check console for any warnings
+3. Fix cycles or broken links
+4. Re-run to confirm fixes
+
+**Exporting Knowledge:**
+1. Navigate to a deep note
+2. Run "Export ancestor tree [Parent]"
+3. Paste into documentation note
+4. Share lineage with others
 
 ### Embedding Relationship Trees in Notes
 

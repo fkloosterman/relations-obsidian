@@ -46,6 +46,24 @@ An Obsidian plugin for visualizing parent-child relationships between notes base
 
 📖 **[Read the full Advanced Context Menu Guide](docs/ADVANCED-CONTEXT-MENU-GUIDE.md)**
 
+### Navigation Commands (Milestone 6.1)
+- **Quick Navigation**: Navigate to parent or child notes instantly from the command palette
+  - Go to parent note - Navigate directly to single parent, or choose from multiple
+  - Go to child note - Navigate directly to single child, or choose from multiple
+- **Sidebar Display**: Show specific relationship trees in the sidebar
+  - Show parent tree in sidebar - Display only ancestors
+  - Show child tree in sidebar - Display only descendants
+  - Show full lineage in sidebar - Display all relationships (ancestors, descendants, siblings)
+- **Sidebar Control**: Toggle sidebar visibility with a single command
+  - Toggle relation sidebar - Open if closed, close if open
+- **Smart Selection**: Modal selector for multiple parents/children
+  - Full keyboard navigation (Enter/Space to select, arrows to navigate)
+  - Displays note names and folder paths
+  - Accessible and intuitive interface
+- **Keyboard Shortcuts**: All commands support custom keyboard shortcuts
+  - Assign shortcuts via Obsidian Settings → Hotkeys
+  - Search for "relation" to find all plugin commands
+
 ## Installation
 
 ### Manual Installation
@@ -98,6 +116,76 @@ The plugin will maintain separate relationship graphs for each field, allowing y
 3. If you have multiple parent fields configured, use the field selector to switch between them
 4. Click the pin icon to keep the sidebar focused on a specific note
 5. Each section (Ancestors, Descendants, Siblings) can be expanded/collapsed independently
+
+### Using Navigation Commands
+
+The plugin provides six commands for efficient navigation and sidebar control:
+
+#### Quick Navigation Commands
+
+**Go to parent note**
+- Opens the parent note of the current file
+- If single parent: navigates directly
+- If multiple parents: shows a selection modal
+- Command is only available when the note has at least one parent
+
+**Go to child note**
+- Opens a child note of the current file
+- If single child: navigates directly
+- If multiple children: shows a selection modal
+- Command is only available when the note has at least one child
+
+#### Sidebar Display Commands
+
+**Show parent tree in sidebar**
+- Opens the sidebar and shows only the ancestors section
+- Automatically pins the sidebar to the current note
+- Hides descendants and siblings sections
+
+**Show child tree in sidebar**
+- Opens the sidebar and shows only the descendants section
+- Automatically pins the sidebar to the current note
+- Hides ancestors and siblings sections
+
+**Show full lineage in sidebar**
+- Opens the sidebar and shows all sections
+- Displays ancestors, descendants, and siblings
+- Automatically pins the sidebar to the current note
+
+**Toggle relation sidebar**
+- Opens the sidebar if currently closed
+- Closes the sidebar if currently open
+- Quick way to show/hide the sidebar
+
+#### Setting Up Keyboard Shortcuts
+
+You can assign keyboard shortcuts to any command for faster access:
+
+1. Open Obsidian Settings (Cmd/Ctrl + ,)
+2. Navigate to "Hotkeys"
+3. Search for "relation" to see all plugin commands
+4. Click the (+) icon next to a command
+5. Press your desired key combination
+
+**Suggested Shortcuts:**
+- `Cmd/Ctrl + Shift + P` - Go to parent note
+- `Cmd/Ctrl + Shift + C` - Go to child note
+- `Cmd/Ctrl + Shift + R` - Toggle relation sidebar
+- `Cmd/Ctrl + Shift + L` - Show full lineage in sidebar
+
+#### Note Selection Modal
+
+When navigating to parents or children and multiple options are available, a selection modal appears:
+
+- **Mouse Navigation**: Click on any note to navigate to it
+- **Keyboard Navigation**:
+  - `↑` / `↓` - Navigate between notes
+  - `Enter` or `Space` - Select the focused note
+  - `Escape` - Close the modal without selecting
+
+The modal displays:
+- Note name (prominently)
+- Folder path (in smaller text, if not in root folder)
 
 ### Embedding Relationship Trees in Notes
 

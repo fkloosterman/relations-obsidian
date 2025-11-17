@@ -7,6 +7,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - Milestone 6.1: Basic Navigation Commands
+
+#### Quick Navigation
+- **Go to parent note**: Navigate to parent notes instantly
+  - Direct navigation for single parent
+  - Smart modal selector for multiple parents
+  - Command only available when note has parents
+- **Go to child note**: Navigate to child notes instantly
+  - Direct navigation for single child
+  - Smart modal selector for multiple children
+  - Command only available when note has children
+
+#### Sidebar Display Commands
+- **Show parent tree in sidebar**: Display only ancestors section
+  - Opens and pins sidebar to current note
+  - Configures sidebar to show ancestors only
+- **Show child tree in sidebar**: Display only descendants section
+  - Opens and pins sidebar to current note
+  - Configures sidebar to show descendants only
+- **Show full lineage in sidebar**: Display all relationship sections
+  - Opens and pins sidebar to current note
+  - Shows ancestors, descendants, and siblings
+- **Toggle relation sidebar**: Quick sidebar visibility control
+  - Opens sidebar if closed
+  - Closes sidebar if open
+
+#### Note Selection Modal
+- Keyboard-accessible modal for selecting from multiple notes
+- Full keyboard navigation support:
+  - Arrow keys (↑/↓) to navigate options
+  - Enter or Space to select
+  - Escape to cancel
+- Mouse support with hover effects
+- Displays note names and folder paths
+- Auto-focuses first item for quick selection
+
+#### Keyboard Shortcuts
+- All commands support custom keyboard shortcuts
+- Assignable via Obsidian Settings → Hotkeys
+- Suggested shortcuts:
+  - `Cmd/Ctrl + Shift + P` - Go to parent note
+  - `Cmd/Ctrl + Shift + C` - Go to child note
+  - `Cmd/Ctrl + Shift + R` - Toggle relation sidebar
+  - `Cmd/Ctrl + Shift + L` - Show full lineage
+
+#### Technical Implementation
+- Created `src/commands/navigation-commands.ts` with 6 commands
+- Created `src/commands/modal-selector.ts` for note selection
+- Added `setSectionsVisible()` method to `RelationSidebarView`
+- Comprehensive test coverage with 55 unit tests
+- Full JSDoc documentation
+- Accessible UI following ARIA best practices
+
 ### Added - Milestone 5.2: Advanced Codeblock Options
 
 #### Title Display

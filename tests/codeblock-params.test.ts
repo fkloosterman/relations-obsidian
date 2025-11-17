@@ -382,4 +382,334 @@ collapsed: true
 			expect(error.message).toBe('Test error message');
 		});
 	});
+
+	describe('Extended Codeblock Parameters (Milestone 5.2)', () => {
+		describe('Filter parameter parsing', () => {
+			it('should parse filter-tag parameter', () => {
+				const source = `
+type: ancestors
+filter-tag: #project
+`;
+				const params = parseCodeblockParams(source);
+				expect(params.filterTag).toBe('#project');
+			});
+
+			it('should parse filterTag parameter (camelCase)', () => {
+				const source = `
+type: ancestors
+filterTag: #project
+`;
+				const params = parseCodeblockParams(source);
+				expect(params.filterTag).toBe('#project');
+			});
+
+			it('should parse filter-folder parameter', () => {
+				const source = `
+type: ancestors
+filter-folder: Projects/
+`;
+				const params = parseCodeblockParams(source);
+				expect(params.filterFolder).toBe('Projects/');
+			});
+
+			it('should parse filterFolder parameter (camelCase)', () => {
+				const source = `
+type: ancestors
+filterFolder: Projects/
+`;
+				const params = parseCodeblockParams(source);
+				expect(params.filterFolder).toBe('Projects/');
+			});
+
+			it('should parse exclude parameter', () => {
+				const source = `
+type: ancestors
+exclude: [[Note1]], [[Note2]]
+`;
+				const params = parseCodeblockParams(source);
+				expect(params.exclude).toBe('[[Note1]], [[Note2]]');
+			});
+
+			it('should parse max-nodes parameter', () => {
+				const source = `
+type: ancestors
+max-nodes: 50
+`;
+				const params = parseCodeblockParams(source);
+				expect(params.maxNodes).toBe(50);
+			});
+
+			it('should parse maxNodes parameter (camelCase)', () => {
+				const source = `
+type: ancestors
+maxNodes: 50
+`;
+				const params = parseCodeblockParams(source);
+				expect(params.maxNodes).toBe(50);
+			});
+
+			it('should parse style parameter - compact', () => {
+				const source = `
+type: ancestors
+style: compact
+`;
+				const params = parseCodeblockParams(source);
+				expect(params.style).toBe('compact');
+			});
+
+			it('should parse style parameter - detailed', () => {
+				const source = `
+type: ancestors
+style: detailed
+`;
+				const params = parseCodeblockParams(source);
+				expect(params.style).toBe('detailed');
+			});
+
+			it('should parse style parameter - minimal', () => {
+				const source = `
+type: ancestors
+style: minimal
+`;
+				const params = parseCodeblockParams(source);
+				expect(params.style).toBe('minimal');
+			});
+
+			it('should parse title parameter - none', () => {
+				const source = `
+type: ancestors
+title: none
+`;
+				const params = parseCodeblockParams(source);
+				expect(params.title).toBe('none');
+			});
+
+			it('should parse title parameter - simple', () => {
+				const source = `
+type: ancestors
+title: simple
+`;
+				const params = parseCodeblockParams(source);
+				expect(params.title).toBe('simple');
+			});
+
+			it('should parse title parameter - detailed', () => {
+				const source = `
+type: ancestors
+title: detailed
+`;
+				const params = parseCodeblockParams(source);
+				expect(params.title).toBe('detailed');
+			});
+
+			it('should handle camelCase and kebab-case variants', () => {
+				const source1 = 'type: ancestors\nfilter-tag: #test';
+				const source2 = 'type: ancestors\nfilterTag: #test';
+
+				const params1 = parseCodeblockParams(source1);
+				const params2 = parseCodeblockParams(source2);
+
+				expect(params1.filterTag).toBe(params2.filterTag);
+			});
+
+			it('should throw error for invalid max-nodes (not a number)', () => {
+				const source = `
+type: ancestors
+max-nodes: not-a-number
+`;
+				expect(() => parseCodeblockParams(source)).toThrow('Invalid max-nodes');
+			});
+
+			it('should throw error for invalid max-nodes (zero)', () => {
+				const source = `
+type: ancestors
+max-nodes: 0
+`;
+				expect(() => parseCodeblockParams(source)).toThrow('positive number');
+			});
+
+			it('should throw error for invalid max-nodes (negative)', () => {
+				const source = `
+type: ancestors
+max-nodes: -5
+`;
+				expect(() => parseCodeblockParams(source)).toThrow('positive number');
+			});
+
+			it('should throw error for invalid style', () => {
+				const source = `
+type: ancestors
+style: invalid
+`;
+				expect(() => parseCodeblockParams(source)).toThrow('compact, detailed, minimal');
+			});
+
+			it('should throw error for invalid title', () => {
+				const source = `
+type: ancestors
+title: invalid
+`;
+				expect(() => parseCodeblockParams(source)).toThrow('none, simple, detailed');
+			});
+
+			it('should combine all filters', () => {
+				const source = `
+type: ancestors
+filter-tag: #project
+filter-folder: Projects/
+exclude: [[Archived]]
+max-nodes: 100
+style: detailed
+title: simple
+`;
+				const params = parseCodeblockParams(source);
+
+				expect(params.filterTag).toBe('#project');
+				expect(params.filterFolder).toBe('Projects/');
+				expect(params.exclude).toBe('[[Archived]]');
+				expect(params.maxNodes).toBe(100);
+				expect(params.style).toBe('detailed');
+				expect(params.title).toBe('simple');
+			});
+
+			it('should combine filter params with existing params', () => {
+				const source = `
+note: [[My Note]]
+type: descendants
+depth: 3
+mode: tree
+field: project
+filter-tag: #active
+max-nodes: 50
+style: minimal
+`;
+				const params = parseCodeblockParams(source);
+
+				expect(params.note).toBe('[[My Note]]');
+				expect(params.type).toBe('descendants');
+				expect(params.depth).toBe(3);
+				expect(params.mode).toBe('tree');
+				expect(params.field).toBe('project');
+				expect(params.filterTag).toBe('#active');
+				expect(params.maxNodes).toBe(50);
+				expect(params.style).toBe('minimal');
+			});
+		});
+
+		describe('Filter validation', () => {
+			it('should reject max-nodes > 10000', () => {
+				const params = {
+					type: 'ancestors' as const,
+					maxNodes: 15000
+				};
+
+				expect(() => validateCodeblockParams(params, ['parent']))
+					.toThrow('max-nodes too large');
+			});
+
+			it('should allow max-nodes = 10000', () => {
+				const params = {
+					type: 'ancestors' as const,
+					maxNodes: 10000
+				};
+
+				expect(() => validateCodeblockParams(params, ['parent']))
+					.not.toThrow();
+			});
+
+			it('should allow reasonable max-nodes values', () => {
+				const params = {
+					type: 'ancestors' as const,
+					maxNodes: 100
+				};
+
+				expect(() => validateCodeblockParams(params, ['parent']))
+					.not.toThrow();
+			});
+
+			it('should reject invalid filter-tag format', () => {
+				const params = {
+					type: 'ancestors' as const,
+					filterTag: '../invalid'
+				};
+
+				expect(() => validateCodeblockParams(params, ['parent']))
+					.toThrow('Invalid filter-tag format');
+			});
+
+			it('should allow valid filter-tag with # prefix', () => {
+				const params = {
+					type: 'ancestors' as const,
+					filterTag: '#project'
+				};
+
+				expect(() => validateCodeblockParams(params, ['parent']))
+					.not.toThrow();
+			});
+
+			it('should allow valid filter-tag without # prefix', () => {
+				const params = {
+					type: 'ancestors' as const,
+					filterTag: 'project'
+				};
+
+				expect(() => validateCodeblockParams(params, ['parent']))
+					.not.toThrow();
+			});
+
+			it('should allow nested tag format', () => {
+				const params = {
+					type: 'ancestors' as const,
+					filterTag: '#project/active'
+				};
+
+				expect(() => validateCodeblockParams(params, ['parent']))
+					.not.toThrow();
+			});
+
+			it('should reject path traversal in filter-folder', () => {
+				const params = {
+					type: 'ancestors' as const,
+					filterFolder: '../../../etc'
+				};
+
+				expect(() => validateCodeblockParams(params, ['parent']))
+					.toThrow('Path traversal not allowed');
+			});
+
+			it('should allow valid filter-folder', () => {
+				const params = {
+					type: 'ancestors' as const,
+					filterFolder: 'Projects/Active/'
+				};
+
+				expect(() => validateCodeblockParams(params, ['parent']))
+					.not.toThrow();
+			});
+
+			it('should allow filter-folder at root', () => {
+				const params = {
+					type: 'ancestors' as const,
+					filterFolder: '/'
+				};
+
+				expect(() => validateCodeblockParams(params, ['parent']))
+					.not.toThrow();
+			});
+
+			it('should validate all new parameters together', () => {
+				const params = {
+					type: 'ancestors' as const,
+					filterTag: '#project',
+					filterFolder: 'Projects/',
+					exclude: '[[Archive]]',
+					maxNodes: 50,
+					style: 'detailed' as const
+				};
+
+				expect(() => validateCodeblockParams(params, ['parent']))
+					.not.toThrow();
+			});
+		});
+	});
 });

@@ -16,6 +16,22 @@ export type RelationType = 'ancestors' | 'descendants' | 'siblings' | 'cousins';
 export type DisplayMode = 'tree' | 'list' | 'compact';
 
 /**
+ * Visual style variant for the tree.
+ * - compact: Minimal spacing and indentation
+ * - detailed: Full information with metadata
+ * - minimal: Ultra-compact single-line format
+ */
+export type StyleVariant = 'compact' | 'detailed' | 'minimal';
+
+/**
+ * Title display mode for the codeblock.
+ * - none: No title displayed
+ * - simple: Basic title (e.g., "Descendants of Note")
+ * - detailed: Detailed title with filter information
+ */
+export type TitleMode = 'none' | 'simple' | 'detailed';
+
+/**
  * Parameters for relation-tree codeblock.
  */
 export interface CodeblockParams {
@@ -39,6 +55,26 @@ export interface CodeblockParams {
 
 	/** Whether tree should be initially collapsed (default: false) */
 	collapsed?: boolean;
+
+	// Filtering parameters
+
+	/** Filter by tag (e.g., "#project" or "project") */
+	filterTag?: string;
+
+	/** Filter by folder path (e.g., "Projects/" or "Projects/Active") */
+	filterFolder?: string;
+
+	/** Exclude specific notes (comma-separated wiki-links) */
+	exclude?: string;
+
+	/** Maximum number of nodes to display (truncate if exceeded) */
+	maxNodes?: number;
+
+	/** Visual style variant (default: uses mode) */
+	style?: StyleVariant;
+
+	/** Title display mode (default: none) */
+	title?: TitleMode;
 }
 
 /**
@@ -48,7 +84,10 @@ export const DEFAULT_PARAMS: Partial<CodeblockParams> = {
 	type: 'ancestors',
 	mode: 'tree',
 	showCycles: true,
-	collapsed: false
+	collapsed: false,
+	// No defaults for filters (undefined = no filtering)
+	maxNodes: undefined,
+	style: undefined
 };
 
 /**
@@ -152,6 +191,52 @@ export function parseCodeblockParams(source: string): CodeblockParams {
 				params.collapsed = value === 'true';
 				break;
 
+			case 'filter-tag':
+			case 'filterTag':
+				params.filterTag = value;
+				break;
+
+			case 'filter-folder':
+			case 'filterFolder':
+				params.filterFolder = value;
+				break;
+
+			case 'exclude':
+				params.exclude = value;
+				break;
+
+			case 'max-nodes':
+			case 'maxNodes':
+				const maxNodes = parseInt(value);
+				if (isNaN(maxNodes) || maxNodes < 1) {
+					throw new CodeblockValidationError(
+						`Invalid max-nodes: "${value}". Must be a positive number`,
+						'max-nodes'
+					);
+				}
+				params.maxNodes = maxNodes;
+				break;
+
+			case 'style':
+				if (!['compact', 'detailed', 'minimal'].includes(value)) {
+					throw new CodeblockValidationError(
+						`Invalid style: "${value}". Must be one of: compact, detailed, minimal`,
+						'style'
+					);
+				}
+				params.style = value as StyleVariant;
+				break;
+
+			case 'title':
+				if (!['none', 'simple', 'detailed'].includes(value)) {
+					throw new CodeblockValidationError(
+						`Invalid title: "${value}". Must be one of: none, simple, detailed`,
+						'title'
+					);
+				}
+				params.title = value as TitleMode;
+				break;
+
 			default:
 				throw new CodeblockValidationError(
 					`Unknown parameter: "${key}"`,
@@ -202,5 +287,36 @@ export function validateCodeblockParams(
 			`Depth too large: ${params.depth}. Maximum is 100`,
 			'depth'
 		);
+	}
+
+	// Validate max-nodes is reasonable
+	if (params.maxNodes !== undefined && params.maxNodes > 10000) {
+		throw new CodeblockValidationError(
+			`max-nodes too large: ${params.maxNodes}. Maximum is 10000`,
+			'max-nodes'
+		);
+	}
+
+	// Validate filter-tag format
+	if (params.filterTag) {
+		const tag = params.filterTag.trim();
+		// Allow tags with # prefix or alphanumeric with / and -
+		if (!tag.startsWith('#') && !tag.match(/^[a-zA-Z0-9/_-]+$/)) {
+			throw new CodeblockValidationError(
+				`Invalid filter-tag format: "${params.filterTag}". Use "#tag" or "tag"`,
+				'filter-tag'
+			);
+		}
+	}
+
+	// Validate filter-folder format (no path traversal)
+	if (params.filterFolder) {
+		const folder = params.filterFolder.trim();
+		if (folder.includes('..')) {
+			throw new CodeblockValidationError(
+				`Invalid filter-folder: "${params.filterFolder}". Path traversal not allowed`,
+				'filter-folder'
+			);
+		}
 	}
 }

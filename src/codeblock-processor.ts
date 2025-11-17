@@ -22,6 +22,12 @@ import {
 	buildCousinsTree,
 	TreeNode
 } from './tree-model';
+import {
+	buildFilterFunction,
+	countTreeNodes,
+	truncateTree,
+	FilterFunction
+} from './codeblock-filters';
 
 /**
  * Resolves a note reference to a TFile.
@@ -153,17 +159,35 @@ export class CodeblockProcessor {
 				return;
 			}
 
-			// Build tree based on type
+			// Build filter function from parameters
+			const filterFunction = buildFilterFunction(params, this.app);
+
+			// Build tree based on type (with filter)
 			const tree = this.buildTree(
 				params.type,
 				targetFile,
 				engine,
 				graph,
-				params
+				params,
+				filterFunction
 			);
 
+			// Apply max-nodes truncation if specified
+			let finalTree = tree;
+			let truncatedCount = 0;
+
+			if (params.maxNodes !== undefined && tree) {
+				const nodeCount = countTreeNodes(tree);
+
+				if (nodeCount > params.maxNodes) {
+					const result = truncateTree(tree, params.maxNodes);
+					finalTree = result.tree;
+					truncatedCount = result.truncatedCount;
+				}
+			}
+
 			// Render tree
-			this.renderTree(el, tree, params);
+			this.renderTree(el, finalTree, params, truncatedCount, filterFunction !== null, targetFile, fieldName);
 
 		} catch (error) {
 			if (error instanceof CodeblockValidationError) {
@@ -208,6 +232,7 @@ export class CodeblockProcessor {
 	 * @param engine - Relationship engine for the parent field
 	 * @param graph - Relation graph for the parent field
 	 * @param params - Codeblock parameters
+	 * @param filter - Optional filter function to apply to nodes
 	 * @returns Built tree node(s) or null
 	 */
 	private buildTree(
@@ -215,12 +240,14 @@ export class CodeblockProcessor {
 		file: TFile,
 		engine: any,
 		graph: any,
-		params: CodeblockParams
+		params: CodeblockParams,
+		filter: FilterFunction | null
 	): TreeNode | TreeNode[] | null {
 		const buildOptions = {
 			maxDepth: params.depth,
 			detectCycles: params.showCycles ?? true,
-			includeMetadata: true
+			includeMetadata: true,
+			filter: filter || undefined
 		};
 
 		switch (type) {
@@ -247,11 +274,19 @@ export class CodeblockProcessor {
 	 * @param container - Container element to render into
 	 * @param tree - Tree node(s) to render
 	 * @param params - Codeblock parameters for styling
+	 * @param truncatedCount - Number of nodes truncated (0 if none)
+	 * @param hasFilters - Whether filters are active
+	 * @param targetFile - Target file for the tree (used in title)
+	 * @param fieldName - Name of the parent field being displayed
 	 */
 	private renderTree(
 		container: HTMLElement,
 		tree: TreeNode | TreeNode[] | null,
-		params: CodeblockParams
+		params: CodeblockParams,
+		truncatedCount: number = 0,
+		hasFilters: boolean = false,
+		targetFile?: TFile,
+		fieldName?: string
 	): void {
 		container.empty();
 		container.addClass('relation-codeblock-container');
@@ -261,12 +296,31 @@ export class CodeblockProcessor {
 			container.addClass(`relation-codeblock-mode-${params.mode}`);
 		}
 
+		// Add style variant class
+		if (params.style) {
+			container.addClass(`relation-codeblock-style-${params.style}`);
+		}
+
+		// Add data attribute when filters are active
+		if (hasFilters) {
+			container.setAttribute('data-filtered', 'true');
+		}
+
+		// Render title if requested
+		if (params.title && params.title !== 'none') {
+			this.renderTitle(container, params, hasFilters, targetFile, fieldName);
+		}
+
 		// Handle empty result
 		if (!tree || (Array.isArray(tree) && tree.length === 0)) {
 			const emptyEl = container.createDiv('relation-codeblock-empty');
 			emptyEl.setText(`No ${params.type} found`);
 			return;
 		}
+
+		// Create a separate container for tree content
+		// (TreeRenderer clears the container, so we need to keep title separate)
+		const treeContainer = container.createDiv('relation-codeblock-tree-content');
 
 		// Create renderer
 		const renderer = new TreeRenderer(this.app, {
@@ -277,16 +331,162 @@ export class CodeblockProcessor {
 			cssPrefix: 'relation-codeblock'
 		}, this.plugin);
 
-		// Render tree(s)
+		// Render tree(s) into the tree container
 		if (Array.isArray(tree)) {
-			// Multiple trees (siblings, cousins)
-			tree.forEach(node => {
-				renderer.render(node, container);
-			});
+			// Flat list (siblings, cousins) - render as list not as trees
+			this.renderNodeList(tree, treeContainer);
 		} else {
 			// Single tree (ancestors, descendants)
-			renderer.render(tree, container);
+			renderer.render(tree, treeContainer);
 		}
+
+		// Add truncation indicator if nodes were truncated
+		if (truncatedCount > 0) {
+			const truncationEl = container.createDiv('relation-codeblock-truncation');
+			truncationEl.setText(`(+${truncatedCount} more...)`);
+			truncationEl.setAttribute('title', `${truncatedCount} nodes hidden due to max-nodes limit`);
+		}
+	}
+
+	/**
+	 * Renders a flat list of nodes (for siblings/cousins).
+	 *
+	 * @param nodes - Array of TreeNode objects to render as a list
+	 * @param container - Container element to render into
+	 */
+	private renderNodeList(nodes: TreeNode[], container: HTMLElement): void {
+		const listContainer = container.createDiv('relation-codeblock-list');
+
+		nodes.forEach(node => {
+			const item = listContainer.createDiv('relation-codeblock-list-item');
+
+			// File icon
+			const icon = item.createDiv('relation-codeblock-list-icon');
+			icon.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>';
+
+			// File name (clickable)
+			const name = item.createSpan('relation-codeblock-list-name');
+			name.setText(node.file.basename);
+
+			// Make clickable with navigation support
+			item.addClass('relation-codeblock-list-item-clickable');
+
+			// Click to open file
+			name.addEventListener('click', async (e) => {
+				e.preventDefault();
+				e.stopPropagation();
+
+				try {
+					// Open file in split pane if Ctrl/Cmd is held
+					if (e.ctrlKey || e.metaKey) {
+						await this.app.workspace.openLinkText(node.file.basename, '', 'split');
+					} else {
+						const leaf = this.app.workspace.getLeaf(false);
+						await leaf.openFile(node.file);
+					}
+				} catch (error) {
+					console.error('[Codeblock Processor] Error opening file:', error);
+				}
+			});
+
+			// Hover preview
+			name.addEventListener('mouseenter', (e) => {
+				this.app.workspace.trigger('hover-link', {
+					event: e,
+					source: 'relation-codeblock',
+					hoverParent: item,
+					targetEl: name,
+					linktext: node.file.path
+				});
+			});
+		});
+	}
+
+	/**
+	 * Renders title for the codeblock.
+	 *
+	 * @param container - Container element to render into
+	 * @param params - Codeblock parameters
+	 * @param hasFilters - Whether filters are active
+	 * @param targetFile - Target file for the tree
+	 * @param fieldName - Name of the parent field being displayed
+	 */
+	private renderTitle(
+		container: HTMLElement,
+		params: CodeblockParams,
+		hasFilters: boolean,
+		targetFile?: TFile,
+		fieldName?: string
+	): void {
+		const titleEl = container.createDiv('relation-codeblock-title');
+
+		// Get display name for the relation type from configured settings
+		let typeName: string;
+		const actualFieldName = fieldName || this.plugin.settings.defaultParentField;
+		const fieldConfig = this.plugin.settings.parentFields.find(f => f.name === actualFieldName);
+
+		if (fieldConfig) {
+			// Use configured display name for the section
+			switch (params.type) {
+				case 'ancestors':
+					typeName = fieldConfig.ancestors.displayName;
+					break;
+				case 'descendants':
+					typeName = fieldConfig.descendants.displayName;
+					break;
+				case 'siblings':
+					typeName = fieldConfig.siblings.displayName;
+					break;
+				case 'cousins':
+					// Cousins doesn't have its own section, use a sensible default
+					typeName = 'Cousins';
+					break;
+			}
+		} else {
+			// Fallback to capitalized type name if config not found
+			typeName = params.type.charAt(0).toUpperCase() + params.type.slice(1);
+		}
+
+		// Generate title text based on mode
+		let titleText = '';
+		const noteName = targetFile?.basename || params.note || 'Current note';
+
+		if (params.title === 'simple') {
+			// Simple mode: "Descendants of Note"
+			titleText = `${typeName} of ${noteName}`;
+		} else if (params.title === 'detailed') {
+			// Detailed mode: Include filtering information
+			titleText = `${typeName} of ${noteName}`;
+
+			// Add filter details on a separate line in smaller font
+			const filterParts: string[] = [];
+			if (params.filterTag) {
+				filterParts.push(`tag: ${params.filterTag}`);
+			}
+			if (params.filterFolder) {
+				filterParts.push(`folder: ${params.filterFolder}`);
+			}
+			if (params.exclude) {
+				const excludeCount = params.exclude.split(',').length;
+				filterParts.push(`excluding ${excludeCount} note${excludeCount > 1 ? 's' : ''}`);
+			}
+			if (params.maxNodes) {
+				filterParts.push(`max: ${params.maxNodes}`);
+			}
+
+			if (filterParts.length > 0) {
+				// Create main title text
+				const mainTitleEl = titleEl.createSpan('relation-codeblock-title-main');
+				mainTitleEl.setText(titleText);
+
+				// Create details on separate line
+				const detailsEl = titleEl.createDiv('relation-codeblock-title-details');
+				detailsEl.setText(filterParts.join(', '));
+				return; // Early return since we've already populated titleEl
+			}
+		}
+
+		titleEl.setText(titleText);
 	}
 
 	/**

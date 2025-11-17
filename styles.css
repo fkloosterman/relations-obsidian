@@ -770,6 +770,67 @@
 	border: 1px solid var(--background-modifier-border);
 }
 
+/* Codeblock Title */
+.relation-codeblock-title {
+	font-size: var(--font-ui-medium);
+	font-weight: var(--font-semibold);
+	color: var(--text-normal);
+	margin-bottom: var(--size-4-2);
+	padding-bottom: var(--size-2-1);
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.relation-codeblock-title-details {
+	font-size: var(--font-ui-smaller);
+	font-weight: var(--font-normal);
+	color: var(--text-muted);
+	margin-top: var(--size-2-1);
+}
+
+/* Codeblock List (for siblings/cousins) */
+.relation-codeblock-list {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-2-2);
+	font-size: var(--font-ui-small);
+}
+
+.relation-codeblock-list-item {
+	display: flex;
+	align-items: center;
+	gap: var(--size-2-2);
+	padding: var(--size-2-1) var(--size-2-2);
+	border-radius: var(--radius-s);
+	transition: background-color 0.1s ease;
+}
+
+.relation-codeblock-list-item-clickable:hover {
+	background-color: var(--background-modifier-hover);
+	cursor: pointer;
+}
+
+.relation-codeblock-list-icon {
+	display: flex;
+	align-items: center;
+	color: var(--text-muted);
+	flex-shrink: 0;
+}
+
+.relation-codeblock-list-icon svg {
+	width: 16px;
+	height: 16px;
+}
+
+.relation-codeblock-list-name {
+	color: var(--text-normal);
+	cursor: pointer;
+	flex-grow: 1;
+}
+
+.relation-codeblock-list-name:hover {
+	color: var(--text-accent);
+}
+
 /* Tree Mode - ensure all standard tree styles apply */
 .relation-codeblock-mode-tree .relation-codeblock-node {
 	position: relative;
@@ -884,5 +945,103 @@
 	color: var(--text-muted);
 	font-size: var(--font-ui-smaller);
 	font-family: var(--font-monospace);
+}
+
+/* ============================================
+   Codeblock Style Variants (Milestone 5.2)
+   ============================================ */
+
+/* STYLE VARIANT: DETAILED
+   Rich display with metadata and borders */
+.relation-codeblock-style-detailed {
+	padding: var(--size-4-4);
+	background: var(--background-primary);
+	border: 2px solid var(--background-modifier-border);
+}
+
+.relation-codeblock-style-detailed .relation-tree-node {
+	padding: var(--size-4-2);
+	margin: var(--size-2-1) 0;
+	background: var(--background-secondary);
+	border-radius: var(--radius-s);
+	border-left: 3px solid var(--interactive-accent);
+}
+
+.relation-codeblock-style-detailed .relation-tree-link {
+	font-size: var(--font-ui-medium);
+	font-weight: var(--font-semibold);
+}
+
+/* Show metadata in detailed mode */
+.relation-codeblock-style-detailed .relation-tree-node::after {
+	content: attr(data-path);
+	display: block;
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	margin-top: var(--size-2-1);
+	font-family: var(--font-monospace);
+}
+
+/* STYLE VARIANT: MINIMAL
+   Ultra-compact single-line format */
+.relation-codeblock-style-minimal {
+	padding: var(--size-2-1);
+	background: transparent;
+	border: none;
+}
+
+.relation-codeblock-style-minimal .relation-tree-node {
+	padding: 0;
+	margin: 0;
+	line-height: 1.3;
+}
+
+.relation-codeblock-style-minimal .relation-tree-toggle {
+	width: var(--icon-size-sm);
+	height: var(--icon-size-sm);
+	padding: 0;
+}
+
+.relation-codeblock-style-minimal .relation-tree-link {
+	font-size: var(--font-ui-small);
+	padding: var(--size-2-1);
+}
+
+.relation-codeblock-style-minimal .relation-tree-indent {
+	width: var(--size-4-2);
+}
+
+/* Hide cycle indicators in minimal mode */
+.relation-codeblock-style-minimal .is-cycle::before {
+	display: none;
+}
+
+/* STYLE VARIANT: COMPACT
+   Alias for mode-compact for consistency */
+.relation-codeblock-style-compact .relation-tree-node {
+	padding: var(--size-2-1) var(--size-4-2);
+	line-height: 1.4;
+}
+
+/* ============================================
+   Truncation Indicator (Milestone 5.2)
+   ============================================ */
+
+.relation-codeblock-truncation {
+	margin-top: var(--size-4-3);
+	padding: var(--size-4-2);
+	text-align: center;
+	color: var(--text-muted);
+	font-style: italic;
+	font-size: var(--font-ui-small);
+	background: var(--background-secondary);
+	border-radius: var(--radius-s);
+	border: 1px dashed var(--background-modifier-border);
+	cursor: help;
+}
+
+.relation-codeblock-truncation:hover {
+	background: var(--background-modifier-hover);
+	color: var(--text-normal);
 }
 

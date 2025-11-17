@@ -526,7 +526,8 @@ export class CodeblockProcessor {
 	}
 
 	/**
-	 * Renders cycle warning if the tree contains any cycles.
+	 * Renders cycle warning if the tree contains any cycles at the root level.
+	 * Only shows warning for direct cycle nodes, not for descendants that happen to be cyclic.
 	 *
 	 * @param container - Container element to render into
 	 * @param tree - Tree node(s) to check for cycles
@@ -535,24 +536,24 @@ export class CodeblockProcessor {
 		container: HTMLElement,
 		tree: TreeNode | TreeNode[]
 	): void {
-		// Collect all cyclic nodes
+		// Collect cyclic nodes at root level (depth 0) only
 		const cyclicNodes: TreeNode[] = [];
 
-		const checkNode = (node: TreeNode): void => {
-			if (node.isCycle) {
+		const checkRootNode = (node: TreeNode): void => {
+			// Only check root-level nodes (depth 0)
+			if (node.depth === 0 && node.isCycle) {
 				cyclicNodes.push(node);
 			}
-			node.children.forEach(checkNode);
 		};
 
-		// Check all trees
+		// Check all root trees
 		if (Array.isArray(tree)) {
-			tree.forEach(checkNode);
+			tree.forEach(checkRootNode);
 		} else {
-			checkNode(tree);
+			checkRootNode(tree);
 		}
 
-		// Only render warning if cycles were found
+		// Only render warning if cycles were found at root level
 		if (cyclicNodes.length === 0) return;
 
 		// Create warning notice
@@ -573,18 +574,8 @@ export class CodeblockProcessor {
 
 		details.setText(
 			`${noteText} part of a cycle. ` +
-			'Cyclic relationships may cause infinite traversals. '
+			'Cyclic relationships may cause infinite traversals.'
 		);
-
-		const link = details.createEl('a', {
-			text: 'Learn about cycles →',
-			href: '#'
-		});
-
-		link.addEventListener('click', (e) => {
-			e.preventDefault();
-			window.open('https://github.com/fkloosterman/relations-obsidian/blob/main/docs/CYCLES-GUIDE.md');
-		});
 	}
 }
 

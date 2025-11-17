@@ -175,6 +175,12 @@ export class TreeRenderer {
 		const nodeContent = document.createElement('div');
 		nodeContent.classList.add(`${this.options.cssPrefix}-node-content`);
 
+		// Apply metadata CSS classes if available
+		if (node.metadata?.className) {
+			const classes = node.metadata.className.split(' ').filter(c => c.trim());
+			classes.forEach(cls => nodeContent.classList.add(cls));
+		}
+
 		// Store node data on element for context menu access
 		nodeContent.setAttribute('data-path', node.file.path);
 		nodeContent.setAttribute('data-depth', String(node.depth));

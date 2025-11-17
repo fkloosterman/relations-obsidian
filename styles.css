@@ -1102,7 +1102,41 @@
    Cycle Warning Styles (Milestone 8.1)
    ============================================ */
 
-/* Cycle warning removed - 🔄 icon on individual nodes is sufficient */
+/* Cycle Warning Box */
+.relation-codeblock-cycle-warning {
+	margin: var(--size-4-2) 0;
+	padding: var(--size-4-3);
+	background: var(--background-modifier-warning);
+	border: 1px solid var(--color-yellow);
+	border-radius: var(--radius-m);
+	display: flex;
+	gap: var(--size-4-2);
+	align-items: flex-start;
+}
+
+.relation-codeblock-cycle-warning-icon {
+	font-size: var(--font-ui-larger);
+	flex-shrink: 0;
+	line-height: 1;
+	margin-top: 2px;
+}
+
+.relation-codeblock-cycle-warning-content {
+	flex: 1;
+}
+
+.relation-codeblock-cycle-warning-message {
+	color: var(--text-warning);
+	font-weight: var(--font-semibold);
+	font-size: var(--font-ui-small);
+	margin-bottom: var(--size-2-1);
+}
+
+.relation-codeblock-cycle-warning-details {
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	line-height: 1.5;
+}
 
 /* Enhanced cycle indicator styles */
 .relation-tree-cycle-indicator {

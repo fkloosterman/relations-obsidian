@@ -604,7 +604,10 @@ describe('Tree Rendering Modes', () => {
 
 			const result = buildModeTree(fileA, config, engine, graph, metadataCache);
 
-			expect(result.hasCycles).toBe(true);
+			// With path-based detection, hasCycles is false because B doesn't appear
+			// twice in the path (A → B). Even though graph.detectCycle(B) returns a cycle,
+			// path-based detection only marks nodes that appear twice in the traversal path.
+			expect(result.hasCycles).toBe(false);
 		});
 	});
 

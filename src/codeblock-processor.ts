@@ -347,7 +347,10 @@ export class CodeblockProcessor {
 			truncationEl.setAttribute('title', `${truncatedCount} nodes hidden due to max-nodes limit`);
 		}
 
-		// Note: Cycle warning removed - the 🔄 icon on individual nodes is sufficient
+		// Add cycle warning if cycles are detected in this tree
+		if (params.showCycles !== false && tree) {
+			this.renderCycleWarning(container, tree);
+		}
 	}
 
 	/**
@@ -518,6 +521,59 @@ export class CodeblockProcessor {
 			const errorField = errorBox.createDiv('relation-codeblock-error-field');
 			errorField.setText(`Field: ${field}`);
 		}
+	}
+
+	/**
+	 * Renders cycle warning if the tree contains cycles.
+	 * Only shows cycles that are visible in the current tree view.
+	 *
+	 * @param container - Container element to render into
+	 * @param tree - Tree node(s) to check for cycles
+	 */
+	private renderCycleWarning(
+		container: HTMLElement,
+		tree: TreeNode | TreeNode[]
+	): void {
+		// Collect all cyclic nodes in the tree
+		const cyclicNodes: TreeNode[] = [];
+
+		const checkNode = (node: TreeNode): void => {
+			if (node.isCycle) {
+				cyclicNodes.push(node);
+			}
+			node.children.forEach(checkNode);
+		};
+
+		// Check all trees
+		if (Array.isArray(tree)) {
+			tree.forEach(checkNode);
+		} else {
+			checkNode(tree);
+		}
+
+		// Only render warning if cycles were found
+		if (cyclicNodes.length === 0) return;
+
+		// Create warning notice
+		const warning = container.createDiv('relation-codeblock-cycle-warning');
+
+		const icon = warning.createSpan('relation-codeblock-cycle-warning-icon');
+		icon.setText('⚠️');
+
+		const messageDiv = warning.createDiv('relation-codeblock-cycle-warning-message');
+
+		const title = messageDiv.createEl('strong');
+		title.setText('Cycle detected in this tree');
+
+		const details = messageDiv.createDiv('relation-codeblock-cycle-warning-details');
+		const noteText = cyclicNodes.length === 1
+			? '1 note in this tree is'
+			: `${cyclicNodes.length} notes in this tree are`;
+
+		details.setText(
+			`${noteText} part of a cycle. ` +
+			'Cyclic relationships may cause infinite traversals.'
+		);
 	}
 
 }

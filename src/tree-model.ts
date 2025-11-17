@@ -138,21 +138,25 @@ function buildTreeFromGenerations(
 	generations: TFile[][],
 	engine: RelationshipEngine,
 	graph: RelationGraph,
-	options: TreeBuildOptions
+	options: TreeBuildOptions,
+	visitedPath: Set<string> = new Set()
 ): TreeNode {
-	// Check if this file is part of a cycle
-	const isCycle = options.detectCycles !== false
-		? graph.detectCycle(file) !== null
-		: false;
+	// Check if this file is part of a cycle IN THIS TREE (not globally)
+	// A cycle exists if we've seen this file before in the current path
+	const isCycle = options.detectCycles !== false && visitedPath.has(file.path);
 
 	// Create node (pass graph for enhanced cycle info)
 	const node = createTreeNode(file, depth, isCycle, options, graph);
 
-	// Check if we've reached max depth
+	// Check if we've reached max depth or detected a cycle (stop traversing)
 	const maxDepth = options.maxDepth ?? Infinity;
-	if (depth >= maxDepth) {
+	if (depth >= maxDepth || isCycle) {
 		return node;
 	}
+
+	// Add current file to visited path
+	const newVisitedPath = new Set(visitedPath);
+	newVisitedPath.add(file.path);
 
 	// If we have more generations, build children
 	if (generations.length > 0) {
@@ -165,14 +169,15 @@ function buildTreeFromGenerations(
 				continue;
 			}
 
-			// Recursively build child nodes
+			// Recursively build child nodes with updated visited path
 			const childNode = buildTreeFromGenerations(
 				child,
 				depth + 1,
 				remainingGenerations,
 				engine,
 				graph,
-				options
+				options,
+				newVisitedPath
 			);
 
 			node.children.push(childNode);

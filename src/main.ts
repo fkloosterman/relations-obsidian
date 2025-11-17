@@ -26,6 +26,7 @@ import {
   getPresetDescription,
   getPresetMetadata
 } from './presets/field-configurations';
+import { registerNavigationCommands } from './commands/navigation-commands';
 
 export default class ParentRelationPlugin extends Plugin {
   settings!: ParentRelationSettings;
@@ -109,6 +110,9 @@ export default class ParentRelationPlugin extends Plugin {
         await this.toggleSidebar();
       }
     });
+
+    // Register navigation commands (Milestone 6.1 Phase 1)
+    registerNavigationCommands(this);
 
     // Register advanced commands (Milestone 4.3B Phase 4)
     this.registerCommands();

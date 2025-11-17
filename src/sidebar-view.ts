@@ -1032,6 +1032,41 @@ export class RelationSidebarView extends ItemView {
 	}
 
 	/**
+	 * Sets which sections are visible in the sidebar.
+	 *
+	 * Updates the visibility configuration for the ancestors, descendants,
+	 * and siblings sections for the currently selected parent field.
+	 *
+	 * @param visible - Object specifying visibility for each section
+	 */
+	setSectionsVisible(visible: {
+		ancestors?: boolean;
+		descendants?: boolean;
+		siblings?: boolean;
+	}): void {
+		const fieldName = this.viewState.selectedParentField;
+		const fieldConfig = this.plugin.settings.parentFields.find(
+			f => f.name === fieldName
+		);
+
+		if (!fieldConfig) return;
+
+		// Update field config
+		if (visible.ancestors !== undefined) {
+			fieldConfig.ancestors.visible = visible.ancestors;
+		}
+		if (visible.descendants !== undefined) {
+			fieldConfig.descendants.visible = visible.descendants;
+		}
+		if (visible.siblings !== undefined) {
+			fieldConfig.siblings.visible = visible.siblings;
+		}
+
+		// Refresh view
+		this.updateView();
+	}
+
+	/**
 	 * Sets the selected parent field for this view.
 	 *
 	 * @param fieldName - The name of the parent field to select

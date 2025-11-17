@@ -87,6 +87,7 @@ export class TreeRenderer {
 	private contextMenuBuilder?: ContextMenuBuilder;
 	private renderContext?: TreeRenderContext;
 	private plugin?: ParentRelationPlugin;
+	private nodeIdCounter: number = 0;
 
 	constructor(
 		private app: App,
@@ -132,6 +133,7 @@ export class TreeRenderer {
 
 		// Reset state
 		this.nodeStates.clear();
+		this.nodeIdCounter = 0;
 
 		// Store context for later use
 		this.renderContext = context;
@@ -166,6 +168,9 @@ export class TreeRenderer {
 			return nodeContainer;
 		}
 
+		// Generate unique ID for this node instance
+		const uniqueNodeId = `node-${this.nodeIdCounter++}`;
+
 		// Create node content wrapper
 		const nodeContent = document.createElement('div');
 		nodeContent.classList.add(`${this.options.cssPrefix}-node-content`);
@@ -173,6 +178,7 @@ export class TreeRenderer {
 		// Store node data on element for context menu access
 		nodeContent.setAttribute('data-path', node.file.path);
 		nodeContent.setAttribute('data-depth', String(node.depth));
+		nodeContent.setAttribute('data-node-id', uniqueNodeId);
 
 		// Store the full TreeNode data
 		(nodeContent as any).__treeNodeData = node;
@@ -219,49 +225,38 @@ export class TreeRenderer {
 		}
 
 		nodeContainer.appendChild(nodeContent);
-	
+
 		// Pre-calculate state for children if node has any
 		if (node.children.length > 0) {
-			// Check if we have existing state (user manually toggled)
-			const existingState = this.nodeStates.get(node.file.path);
-			
-			// Determine initial collapsed state
-			let isCollapsed: boolean;
+			// Use depth-based logic: collapse when currentDepth + 1 >= initialDepth
+			// This means initialDepth = 1 shows only top level nodes (children collapsed)
+			const isCollapsed = (currentDepth + 1) >= this.options.initialDepth;
 
-			if (existingState) {
-				// Preserve user's manual toggle state
-				isCollapsed = existingState.collapsed;
-			} else {
-				// Use depth-based logic: collapse when currentDepth + 1 >= initialDepth
-				// This means initialDepth = 1 shows only top level nodes (children collapsed)
-				isCollapsed = (currentDepth + 1) >= this.options.initialDepth;
-			}
-			
-			// Store state BEFORE calling addCollapseToggle
+			// Store state BEFORE calling addCollapseToggle using unique node ID
 			// (We'll update the element reference later)
-			this.nodeStates.set(node.file.path, {
+			this.nodeStates.set(uniqueNodeId, {
 				collapsed: isCollapsed,
 				element: null as any, // Will be set below
 			});
 		}
-	
+
 		// Add collapse toggle if node has children (state is now available)
 		if (this.options.collapsible && node.children.length > 0) {
-			this.addCollapseToggle(nodeContent, node);
+			this.addCollapseToggle(nodeContent, node, uniqueNodeId);
 		} else if (this.options.collapsible) {
 			// Add spacer for alignment when no toggle
 			const spacer = document.createElement('span');
 			spacer.classList.add(`${this.options.cssPrefix}-toggle-spacer`);
 			nodeContent.appendChild(spacer);
 		}
-	
+
 		// Render children
 		if (node.children.length > 0) {
 			const childrenContainer = document.createElement('div');
 			childrenContainer.classList.add(`${this.options.cssPrefix}-children`);
-	
+
 			// Get the state we stored earlier
-			const state = this.nodeStates.get(node.file.path)!;
+			const state = this.nodeStates.get(uniqueNodeId)!;
 			
 			if (state.collapsed) {
 				childrenContainer.classList.add(`${this.options.cssPrefix}-collapsed`);
@@ -287,28 +282,29 @@ export class TreeRenderer {
 	 *
 	 * @param element - Node content element
 	 * @param node - TreeNode data
+	 * @param uniqueNodeId - Unique ID for this node instance
 	 */
-	private addCollapseToggle(element: HTMLElement, node: TreeNode): void {
+	private addCollapseToggle(element: HTMLElement, node: TreeNode, uniqueNodeId: string): void {
 		const toggle = document.createElement('span');
 		toggle.classList.add(`${this.options.cssPrefix}-toggle`);
-		toggle.setAttribute('data-file-path', node.file.path);
+		toggle.setAttribute('data-node-id', uniqueNodeId);
 		toggle.setAttribute('title', `Toggle ${node.file.basename} children`);
 		toggle.setAttribute('role', 'button');
 		toggle.setAttribute('aria-label', 'Toggle children');
-		
+
 		// Get the current state to determine initial icon
 		// Note: this is called AFTER the state is stored in nodeStates
-		const state = this.nodeStates.get(node.file.path);
+		const state = this.nodeStates.get(uniqueNodeId);
 		if (!state) {
-			console.error(`[TreeRenderer] No state found for ${node.file.path} when adding collapse toggle`);
+			console.error(`[TreeRenderer] No state found for ${uniqueNodeId} when adding collapse toggle`);
 			return;
 		}
-		
+
 		const isCollapsed = state.collapsed;
-		
+
 		toggle.setAttribute('aria-expanded', String(!isCollapsed));
 		toggle.setAttribute('tabindex', '0');
-	
+
 		// Set initial icon
 		this.updateToggleIcon(toggle, isCollapsed);
 
@@ -316,7 +312,7 @@ export class TreeRenderer {
 		toggle.addEventListener('click', (e) => {
 			e.stopPropagation();
 			e.preventDefault();
-			this.toggleNode(node.file.path, toggle);
+			this.toggleNode(uniqueNodeId, toggle);
 		});
 
 		// Keyboard handler (Enter/Space)
@@ -324,7 +320,7 @@ export class TreeRenderer {
 			if (e.key === 'Enter' || e.key === ' ') {
 				e.preventDefault();
 				e.stopPropagation();
-				this.toggleNode(node.file.path, toggle);
+				this.toggleNode(uniqueNodeId, toggle);
 			}
 		});
 
@@ -334,11 +330,11 @@ export class TreeRenderer {
 	/**
 	 * Toggles the collapsed state of a node.
 	 *
-	 * @param filePath - Path of the file node to toggle
+	 * @param nodeId - Unique ID of the node to toggle
 	 * @param toggleElement - Toggle button element
 	 */
-	private toggleNode(filePath: string, toggleElement: HTMLElement): void {
-	  const state = this.nodeStates.get(filePath);
+	private toggleNode(nodeId: string, toggleElement: HTMLElement): void {
+	  const state = this.nodeStates.get(nodeId);
 	  if (!state) return;
 
 	  // Toggle state
@@ -385,9 +381,9 @@ export class TreeRenderer {
 		svg.addEventListener('click', (e) => {
 			e.stopPropagation();
 			e.preventDefault();
-			const filePath = toggleElement.getAttribute('data-file-path');
-			if (filePath) {
-				this.toggleNode(filePath, toggleElement);
+			const nodeId = toggleElement.getAttribute('data-node-id');
+			if (nodeId) {
+				this.toggleNode(nodeId, toggleElement);
 			}
 		});
 
@@ -491,15 +487,15 @@ export class TreeRenderer {
 	 * Expands all nodes in the tree.
 	 */
 	expandAll(): void {
-		this.nodeStates.forEach((state, path) => {
+		this.nodeStates.forEach((state, nodeId) => {
 			if (state.collapsed) {
 				// Find toggle element and trigger toggle
 				const toggleEl = state.element.parentElement?.querySelector(
-					`.${this.options.cssPrefix}-toggle`
+					`.${this.options.cssPrefix}-toggle[data-node-id="${nodeId}"]`
 				) as HTMLElement;
 
 				if (toggleEl) {
-					this.toggleNode(path, toggleEl);
+					this.toggleNode(nodeId, toggleEl);
 				}
 			}
 		});
@@ -509,15 +505,15 @@ export class TreeRenderer {
 	 * Collapses all nodes in the tree.
 	 */
 	collapseAll(): void {
-		this.nodeStates.forEach((state, path) => {
+		this.nodeStates.forEach((state, nodeId) => {
 			if (!state.collapsed) {
 				// Find toggle element and trigger toggle
 				const toggleEl = state.element.parentElement?.querySelector(
-					`.${this.options.cssPrefix}-toggle`
+					`.${this.options.cssPrefix}-toggle[data-node-id="${nodeId}"]`
 				) as HTMLElement;
 
 				if (toggleEl) {
-					this.toggleNode(path, toggleEl);
+					this.toggleNode(nodeId, toggleEl);
 				}
 			}
 		});
@@ -635,6 +631,7 @@ export class TreeRenderer {
 
 	/**
 	 * Expands all descendants of a node.
+	 * Note: If the file appears multiple times (due to cycles), operates on all instances.
 	 *
 	 * @param filePath - Path of the node to expand all children for
 	 */
@@ -642,47 +639,54 @@ export class TreeRenderer {
 		console.log('[TreeRenderer] expandAllChildren called for:', filePath);
 		console.log('[TreeRenderer] nodeStates size:', this.nodeStates.size);
 
-		const state = this.nodeStates.get(filePath);
-		if (!state) {
-			console.warn('[TreeRenderer] No state found for:', filePath);
+		// Find all node instances for this file path
+		const nodeIds = this.findNodeIdsByFilePath(filePath);
+		if (nodeIds.length === 0) {
+			console.warn('[TreeRenderer] No nodes found for:', filePath);
 			return;
 		}
 
-		// First expand the node itself if it's collapsed
-		if (state.collapsed) {
-			state.collapsed = false;
-			state.element.classList.remove(`${this.options.cssPrefix}-collapsed`);
+		// Expand all instances
+		for (const nodeId of nodeIds) {
+			const state = this.nodeStates.get(nodeId);
+			if (!state) continue;
 
-			// Update toggle icon
-			const toggleEl = state.element.parentElement?.querySelector(
-				`[data-file-path="${filePath}"]`
-			) as HTMLElement;
-			if (toggleEl) {
-				this.updateToggleIcon(toggleEl, false);
-				toggleEl.setAttribute('aria-expanded', 'true');
+			// First expand the node itself if it's collapsed
+			if (state.collapsed) {
+				state.collapsed = false;
+				state.element.classList.remove(`${this.options.cssPrefix}-collapsed`);
+
+				// Update toggle icon
+				const toggleEl = state.element.parentElement?.querySelector(
+					`[data-node-id="${nodeId}"]`
+				) as HTMLElement;
+				if (toggleEl) {
+					this.updateToggleIcon(toggleEl, false);
+					toggleEl.setAttribute('aria-expanded', 'true');
+				}
 			}
-		}
 
-		// Recursively expand all descendants
-		this.expandAllDescendants(filePath);
+			// Recursively expand all descendants
+			this.expandAllDescendants(nodeId);
+		}
 	}
 
 	/**
 	 * Recursively expands all descendants of a node.
 	 *
-	 * @param filePath - Parent node path
+	 * @param nodeId - Parent node ID
 	 */
-	private expandAllDescendants(filePath: string): void {
-		const parentState = this.nodeStates.get(filePath);
+	private expandAllDescendants(nodeId: string): void {
+		const parentState = this.nodeStates.get(nodeId);
 		if (!parentState || !parentState.element) {
-			console.warn('[TreeRenderer] Invalid parent state for:', filePath);
+			console.warn('[TreeRenderer] Invalid parent state for:', nodeId);
 			return;
 		}
 
 		let expandedCount = 0;
-		// Get all node states that are descendants of this path
-		for (const [path, state] of this.nodeStates.entries()) {
-			if (path === filePath) continue;
+		// Get all node states that are descendants of this node
+		for (const [childNodeId, state] of this.nodeStates.entries()) {
+			if (childNodeId === nodeId) continue;
 			if (!state.element) continue;
 
 			// Check if element is a descendant in the DOM
@@ -693,7 +697,7 @@ export class TreeRenderer {
 
 					// Update toggle icon
 					const toggleEl = state.element.parentElement?.querySelector(
-						`[data-file-path="${path}"]`
+						`[data-node-id="${childNodeId}"]`
 					) as HTMLElement;
 					if (toggleEl) {
 						this.updateToggleIcon(toggleEl, false);
@@ -708,6 +712,7 @@ export class TreeRenderer {
 
 	/**
 	 * Collapses all descendants of a node.
+	 * Note: If the file appears multiple times (due to cycles), operates on all instances.
 	 *
 	 * @param filePath - Path of the node to collapse all children for
 	 */
@@ -715,48 +720,55 @@ export class TreeRenderer {
 		console.log('[TreeRenderer] collapseAllChildren called for:', filePath);
 		console.log('[TreeRenderer] nodeStates size:', this.nodeStates.size);
 
-		const state = this.nodeStates.get(filePath);
-		if (!state) {
-			console.warn('[TreeRenderer] No state found for:', filePath);
+		// Find all node instances for this file path
+		const nodeIds = this.findNodeIdsByFilePath(filePath);
+		if (nodeIds.length === 0) {
+			console.warn('[TreeRenderer] No nodes found for:', filePath);
 			return;
 		}
 
-		// First, recursively collapse all descendants (so they're collapsed when re-expanded)
-		this.collapseAllDescendants(filePath);
+		// Collapse all instances
+		for (const nodeId of nodeIds) {
+			const state = this.nodeStates.get(nodeId);
+			if (!state) continue;
 
-		// Then collapse the node itself (this hides all its children)
-		if (!state.collapsed) {
-			state.collapsed = true;
-			state.element.classList.add(`${this.options.cssPrefix}-collapsed`);
+			// First, recursively collapse all descendants (so they're collapsed when re-expanded)
+			this.collapseAllDescendants(nodeId);
 
-			// Update toggle icon
-			const toggleEl = state.element.parentElement?.querySelector(
-				`[data-file-path="${filePath}"]`
-			) as HTMLElement;
-			if (toggleEl) {
-				this.updateToggleIcon(toggleEl, true);
-				toggleEl.setAttribute('aria-expanded', 'false');
+			// Then collapse the node itself (this hides all its children)
+			if (!state.collapsed) {
+				state.collapsed = true;
+				state.element.classList.add(`${this.options.cssPrefix}-collapsed`);
+
+				// Update toggle icon
+				const toggleEl = state.element.parentElement?.querySelector(
+					`[data-node-id="${nodeId}"]`
+				) as HTMLElement;
+				if (toggleEl) {
+					this.updateToggleIcon(toggleEl, true);
+					toggleEl.setAttribute('aria-expanded', 'false');
+				}
+				console.log('[TreeRenderer] Collapsed node itself:', nodeId);
 			}
-			console.log('[TreeRenderer] Collapsed node itself:', filePath);
 		}
 	}
 
 	/**
 	 * Recursively collapses all descendants of a node.
 	 *
-	 * @param filePath - Parent node path
+	 * @param nodeId - Parent node ID
 	 */
-	private collapseAllDescendants(filePath: string): void {
-		const parentState = this.nodeStates.get(filePath);
+	private collapseAllDescendants(nodeId: string): void {
+		const parentState = this.nodeStates.get(nodeId);
 		if (!parentState || !parentState.element) {
-			console.warn('[TreeRenderer] Invalid parent state for:', filePath);
+			console.warn('[TreeRenderer] Invalid parent state for:', nodeId);
 			return;
 		}
 
 		let collapsedCount = 0;
-		// Get all node states that are descendants of this path
-		for (const [path, state] of this.nodeStates.entries()) {
-			if (path === filePath) continue;
+		// Get all node states that are descendants of this node
+		for (const [childNodeId, state] of this.nodeStates.entries()) {
+			if (childNodeId === nodeId) continue;
 			if (!state.element) continue;
 
 			// Check if element is a descendant in the DOM
@@ -767,7 +779,7 @@ export class TreeRenderer {
 
 					// Update toggle icon
 					const toggleEl = state.element.parentElement?.querySelector(
-						`[data-file-path="${path}"]`
+						`[data-node-id="${childNodeId}"]`
 					) as HTMLElement;
 					if (toggleEl) {
 						this.updateToggleIcon(toggleEl, true);
@@ -782,15 +794,21 @@ export class TreeRenderer {
 
 	/**
 	 * Expands all ancestors to make a specific node visible and scrolls to it.
+	 * Note: If the file appears multiple times (due to cycles), operates on the first instance.
 	 *
 	 * @param filePath - Path of the node to expand to
 	 */
 	expandToNode(filePath: string): void {
-		const targetState = this.nodeStates.get(filePath);
+		// Find first node instance for this file path
+		const nodeIds = this.findNodeIdsByFilePath(filePath);
+		if (nodeIds.length === 0) return;
+
+		const nodeId = nodeIds[0]; // Use first instance
+		const targetState = this.nodeStates.get(nodeId);
 		if (!targetState) return;
 
-		// Find all ancestor paths by traversing up the DOM
-		const ancestorPaths: string[] = [];
+		// Find all ancestor node IDs by traversing up the DOM
+		const ancestorNodeIds: string[] = [];
 		let currentElement = targetState.element.parentElement;
 
 		while (currentElement) {
@@ -801,9 +819,9 @@ export class TreeRenderer {
 				if (parentContainer) {
 					const nodeContent = parentContainer.querySelector(`.${this.options.cssPrefix}-node-content`);
 					if (nodeContent) {
-						const path = nodeContent.getAttribute('data-path');
-						if (path) {
-							ancestorPaths.push(path);
+						const ancestorNodeId = nodeContent.getAttribute('data-node-id');
+						if (ancestorNodeId) {
+							ancestorNodeIds.push(ancestorNodeId);
 						}
 					}
 				}
@@ -812,15 +830,15 @@ export class TreeRenderer {
 		}
 
 		// Expand all ancestors
-		for (const ancestorPath of ancestorPaths) {
-			const state = this.nodeStates.get(ancestorPath);
+		for (const ancestorNodeId of ancestorNodeIds) {
+			const state = this.nodeStates.get(ancestorNodeId);
 			if (state && state.collapsed) {
 				state.collapsed = false;
 				state.element.classList.remove(`${this.options.cssPrefix}-collapsed`);
 
 				// Update toggle icon
 				const toggleEl = state.element.parentElement?.querySelector(
-					`[data-file-path="${ancestorPath}"]`
+					`[data-node-id="${ancestorNodeId}"]`
 				) as HTMLElement;
 				if (toggleEl) {
 					this.updateToggleIcon(toggleEl, false);
@@ -830,21 +848,21 @@ export class TreeRenderer {
 		}
 
 		// Scroll to the node
-		this.scrollToNode(filePath);
+		this.scrollToNode(nodeId);
 	}
 
 	/**
 	 * Scrolls to make a node visible with smooth animation.
 	 *
-	 * @param filePath - Path of the node to scroll to
+	 * @param nodeId - Unique ID of the node to scroll to
 	 */
-	private scrollToNode(filePath: string): void {
-		const state = this.nodeStates.get(filePath);
+	private scrollToNode(nodeId: string): void {
+		const state = this.nodeStates.get(nodeId);
 		if (!state || !state.element) return;
 
 		// Find the node content element
 		const nodeContent = state.element.parentElement?.querySelector(
-			`.${this.options.cssPrefix}-node-content`
+			`.${this.options.cssPrefix}-node-content[data-node-id="${nodeId}"]`
 		) as HTMLElement;
 
 		if (nodeContent) {
@@ -865,17 +883,50 @@ export class TreeRenderer {
 
 	/**
 	 * Finds the DOM element for a given file path.
+	 * Note: If the file appears multiple times (due to cycles), returns the first instance.
 	 *
 	 * @param filePath - Path of the file to find
 	 * @returns The DOM element or null if not found
 	 */
 	findNodeElement(filePath: string): HTMLElement | null {
-		const state = this.nodeStates.get(filePath);
+		// Find first node instance for this file path
+		const nodeIds = this.findNodeIdsByFilePath(filePath);
+		if (nodeIds.length === 0) return null;
+
+		const nodeId = nodeIds[0]; // Use first instance
+		const state = this.nodeStates.get(nodeId);
 		if (!state || !state.element) return null;
 
 		return state.element.parentElement?.querySelector(
-			`.${this.options.cssPrefix}-node-content`
+			`.${this.options.cssPrefix}-node-content[data-node-id="${nodeId}"]`
 		) as HTMLElement | null;
+	}
+
+	/**
+	 * Finds all node IDs for a given file path.
+	 * Returns all node instances that match the file path (useful when same file appears multiple times due to cycles).
+	 *
+	 * @param filePath - Path of the file to find
+	 * @returns Array of node IDs matching the file path
+	 */
+	private findNodeIdsByFilePath(filePath: string): string[] {
+		const nodeIds: string[] = [];
+
+		// Search through all states to find matching nodes
+		this.nodeStates.forEach((state, nodeId) => {
+			if (!state.element) return;
+
+			// Find the node content element
+			const nodeContent = state.element.parentElement?.querySelector(
+				`.${this.options.cssPrefix}-node-content[data-path="${filePath}"]`
+			);
+
+			if (nodeContent && nodeContent.getAttribute('data-node-id') === nodeId) {
+				nodeIds.push(nodeId);
+			}
+		});
+
+		return nodeIds;
 	}
 
 	/**

@@ -88,7 +88,7 @@ export default class ParentRelationPlugin extends Plugin {
     );
 
     // Add ribbon icon to toggle sidebar
-    this.addRibbonIcon('git-fork', 'Toggle Relation Explorer', async () => {
+    this.addRibbonIcon('network', 'Toggle Relation Explorer', async () => {
       await this.toggleSidebar();
     });
 

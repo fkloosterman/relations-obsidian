@@ -161,9 +161,8 @@ describe('Graph Analysis', () => {
 			// Test
 			const roots = findRootNotes(graph);
 
-			// Verify
-			expect(roots.length).toBe(1);
-			expect(roots[0].basename).toBe('Isolated');
+			// Verify - isolated notes should NOT be included as roots
+			expect(roots.length).toBe(0);
 		});
 	});
 
@@ -241,9 +240,8 @@ describe('Graph Analysis', () => {
 			// Test
 			const leaves = findLeafNotes(graph);
 
-			// Verify
-			expect(leaves.length).toBe(1);
-			expect(leaves[0].basename).toBe('Isolated');
+			// Verify - isolated notes should NOT be included as leaves
+			expect(leaves.length).toBe(0);
 		});
 	});
 

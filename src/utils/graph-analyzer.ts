@@ -31,7 +31,11 @@ export interface GraphStatistics {
 }
 
 /**
- * Finds all root notes (notes with no parents) in the graph.
+ * Finds all root notes (notes with no parents but with children) in the graph.
+ *
+ * Root notes are the top-level nodes in hierarchies - they have children
+ * but no parents. Isolated notes (with neither parents nor children) are
+ * excluded.
  *
  * @param graph - Relation graph to analyze
  * @returns Array of root notes, sorted alphabetically
@@ -46,7 +50,10 @@ export function findRootNotes(graph: RelationGraph): TFile[] {
 
   for (const file of allFiles) {
     const parents = graph.getParents(file);
-    if (parents.length === 0) {
+    const children = graph.getChildren(file);
+
+    // Root note: no parents but has at least one child
+    if (parents.length === 0 && children.length > 0) {
       roots.push(file);
     }
   }
@@ -58,7 +65,11 @@ export function findRootNotes(graph: RelationGraph): TFile[] {
 }
 
 /**
- * Finds all leaf notes (notes with no children) in the graph.
+ * Finds all leaf notes (notes with no children but with parents) in the graph.
+ *
+ * Leaf notes are the bottom-level nodes in hierarchies - they have parents
+ * but no children. Isolated notes (with neither parents nor children) are
+ * excluded.
  *
  * @param graph - Relation graph to analyze
  * @returns Array of leaf notes, sorted alphabetically
@@ -72,8 +83,11 @@ export function findLeafNotes(graph: RelationGraph): TFile[] {
   const leaves: TFile[] = [];
 
   for (const file of allFiles) {
+    const parents = graph.getParents(file);
     const children = graph.getChildren(file);
-    if (children.length === 0) {
+
+    // Leaf note: no children but has at least one parent
+    if (children.length === 0 && parents.length > 0) {
       leaves.push(file);
     }
   }

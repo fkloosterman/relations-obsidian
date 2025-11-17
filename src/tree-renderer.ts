@@ -409,11 +409,6 @@ export class TreeRenderer {
 			e.preventDefault();
 			e.stopPropagation();
 
-			// Track this click for command palette commands (Milestone 4.3B Phase 4)
-			if (this.plugin && this.renderContext?.parentField) {
-				this.plugin.setLastClickedFile(file, this.renderContext.parentField);
-			}
-
 			// Check for modifier keys for different open modes
 			const newLeaf = e.ctrlKey || e.metaKey;
 
@@ -535,11 +530,6 @@ export class TreeRenderer {
 			const nodeData = this.getNodeDataFromElement(nodeEl);
 			if (!nodeData) return;
 
-			// Track this click for command palette commands (Milestone 4.3B Phase 4)
-			if (this.plugin && context.parentField) {
-				this.plugin.setLastClickedFile(nodeData.file, context.parentField);
-			}
-
 			// Build menu context
 			const menuContext = {
 				node: nodeData.node,
@@ -575,11 +565,6 @@ export class TreeRenderer {
 
 				const nodeData = this.getNodeDataFromElement(nodeEl);
 				if (!nodeData) return;
-
-				// Track this click for command palette commands (Milestone 4.3B Phase 4)
-				if (this.plugin && context.parentField) {
-					this.plugin.setLastClickedFile(nodeData.file, context.parentField);
-				}
 
 				// Build menu context (without mouse event)
 				const menuContext = {

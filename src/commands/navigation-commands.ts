@@ -1,6 +1,7 @@
 import { Notice, TFile, WorkspaceLeaf } from 'obsidian';
 import type ParentRelationPlugin from '../main';
 import { RelationSidebarView, VIEW_TYPE_RELATION_SIDEBAR } from '../sidebar-view';
+import { NoteSelectorModal } from './modal-selector';
 
 /**
  * Command ID and name mappings.
@@ -42,7 +43,8 @@ export function registerNavigationCommands(plugin: ParentRelationPlugin): void {
 	registerShowChildTreeCommand(plugin);
 	registerShowFullLineageCommand(plugin);
 	registerToggleSidebarCommand(plugin);
-	// Note: Go to parent/child commands will be added in Phase 2
+	registerGoToParentCommand(plugin);
+	registerGoToChildCommand(plugin);
 }
 
 /**
@@ -251,4 +253,96 @@ function toggleSidebar(plugin: ParentRelationPlugin): void {
 			new Notice('Relation sidebar opened');
 		}
 	}
+}
+
+/**
+ * Command: Go to parent note.
+ *
+ * Navigates to the parent note of the currently active file. If the file
+ * has a single parent, navigates directly. If it has multiple parents,
+ * shows a modal to select which parent to navigate to.
+ *
+ * @param plugin - The plugin instance
+ */
+function registerGoToParentCommand(plugin: ParentRelationPlugin): void {
+	plugin.addCommand({
+		id: COMMANDS.GO_TO_PARENT.id,
+		name: COMMANDS.GO_TO_PARENT.name,
+		checkCallback: (checking: boolean) => {
+			const file = plugin.app.workspace.getActiveFile();
+			if (!file) return false;
+
+			// Get parents using default field
+			const fieldName = plugin.settings.defaultParentField;
+			const graph = plugin.relationGraphs.get(fieldName);
+			if (!graph) return false;
+
+			const parents = graph.getParents(file);
+			if (parents.length === 0) return false;
+
+			if (!checking) {
+				if (parents.length === 1) {
+					// Single parent - navigate directly
+					plugin.app.workspace.getLeaf().openFile(parents[0]);
+				} else {
+					// Multiple parents - show modal
+					new NoteSelectorModal(
+						plugin.app,
+						parents,
+						'Select Parent Note',
+						(selected) => {
+							plugin.app.workspace.getLeaf().openFile(selected);
+						}
+					).open();
+				}
+			}
+			return true;
+		}
+	});
+}
+
+/**
+ * Command: Go to child note.
+ *
+ * Navigates to a child note of the currently active file. If the file
+ * has a single child, navigates directly. If it has multiple children,
+ * shows a modal to select which child to navigate to.
+ *
+ * @param plugin - The plugin instance
+ */
+function registerGoToChildCommand(plugin: ParentRelationPlugin): void {
+	plugin.addCommand({
+		id: COMMANDS.GO_TO_CHILD.id,
+		name: COMMANDS.GO_TO_CHILD.name,
+		checkCallback: (checking: boolean) => {
+			const file = plugin.app.workspace.getActiveFile();
+			if (!file) return false;
+
+			// Get children using default field
+			const fieldName = plugin.settings.defaultParentField;
+			const graph = plugin.relationGraphs.get(fieldName);
+			if (!graph) return false;
+
+			const children = graph.getChildren(file);
+			if (children.length === 0) return false;
+
+			if (!checking) {
+				if (children.length === 1) {
+					// Single child - navigate directly
+					plugin.app.workspace.getLeaf().openFile(children[0]);
+				} else {
+					// Multiple children - show modal
+					new NoteSelectorModal(
+						plugin.app,
+						children,
+						'Select Child Note',
+						(selected) => {
+							plugin.app.workspace.getLeaf().openFile(selected);
+						}
+					).open();
+				}
+			}
+			return true;
+		}
+	});
 }

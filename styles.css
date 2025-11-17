@@ -1045,3 +1045,55 @@
 	color: var(--text-normal);
 }
 
+/* ============================================
+   Note Selector Modal (Milestone 6.1)
+   ============================================ */
+
+/* Note Selector Modal List */
+.relation-note-selector-list {
+	margin-top: var(--size-4-4);
+	max-height: 400px;
+	overflow-y: auto;
+}
+
+/* Note Selector Item */
+.relation-note-selector-item {
+	padding: var(--size-4-3);
+	margin-bottom: var(--size-2-1);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	cursor: pointer;
+	transition: background-color 0.1s ease, border-color 0.1s ease;
+}
+
+.relation-note-selector-item:hover,
+.relation-note-selector-item.is-hovered,
+.relation-note-selector-item:focus {
+	background-color: var(--background-modifier-hover);
+	outline: none;
+}
+
+.relation-note-selector-item:active {
+	background-color: var(--background-modifier-active-hover);
+}
+
+/* Note Name */
+.relation-note-selector-name {
+	font-weight: var(--font-semibold);
+	color: var(--text-normal);
+	margin-bottom: var(--size-2-1);
+}
+
+/* Note Path */
+.relation-note-selector-path {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	font-family: var(--font-monospace);
+}
+
+/* Keyboard Focus Indicator */
+.relation-note-selector-item:focus {
+	box-shadow: 0 0 0 2px var(--interactive-accent);
+	border-color: var(--interactive-accent);
+}
+

@@ -14,6 +14,14 @@ An Obsidian plugin for visualizing parent-child relationships between notes base
 - **Automatic Graph Building**: Automatically builds and maintains relationship graphs as you create and modify notes
 - **Cycle Detection**: Detects and reports circular relationships to prevent infinite traversals
 
+### Advanced Codeblock Features (Milestone 5.2)
+- **Smart Filtering**: Filter displayed notes by tags, folders, or exclude specific notes
+- **Customizable Titles**: Show simple or detailed titles with filter information
+- **Visual Styles**: Choose between detailed, minimal, or compact presentation styles
+- **Node Limiting**: Limit large trees with `maxNodes` and show truncation indicators
+- **List Rendering**: Siblings and cousins display as clean, clickable lists
+- **Filter Combinations**: Combine multiple filters with AND logic for precise results
+
 ### Advanced Per-Field Configuration (Milestone 4.2B)
 - **Custom Display Names**: Personalize field and section names (e.g., "Projects" instead of "parent")
 - **Section Visibility Control**: Show or hide ancestors, descendants, or siblings sections per field
@@ -130,6 +138,84 @@ depth: 3
 | `field` | string | default field | Parent field to use |
 | `showCycles` | boolean | `true` | Show cycle indicators |
 | `collapsed` | boolean | `false` | Start with tree collapsed |
+| `title` | string | `none` | Title mode: `none`, `simple`, `detailed` |
+| `filterTag` | string | - | Filter by tag (e.g., `#project` or `project`) |
+| `filterFolder` | string | - | Filter by folder path (e.g., `Projects/`) |
+| `exclude` | string | - | Exclude notes (comma-separated wiki-links) |
+| `maxNodes` | number | - | Maximum nodes to display (shows "more..." if exceeded) |
+| `style` | string | - | Visual style: `compact`, `detailed`, `minimal` |
+
+#### Title Modes
+
+Control whether and how to display a title above the relationship tree:
+
+**None** (default):
+- No title displayed
+- Tree starts immediately
+
+**Simple**:
+- Shows basic title: "Descendants of Note Name"
+- Uses configured display names from settings
+
+**Detailed**:
+- Shows title with filter information
+- Main title on first line
+- Filter details on second line in smaller font
+- Example: "Descendants of Project Alpha" with "tag: #active, folder: Projects/" below
+
+#### Filtering Options
+
+Filter which notes appear in the relationship tree:
+
+**Tag Filtering** (`filterTag`):
+- Show only notes with a specific tag
+- Supports nested tags (e.g., `#project` matches `#project/active`)
+- Tag can be specified with or without `#` prefix
+- Checks both frontmatter and inline tags
+
+**Folder Filtering** (`filterFolder`):
+- Show only notes in a specific folder
+- Includes notes in subfolders
+- Path can be specified with or without trailing slash
+- Example: `Projects/` matches `Projects/Active/note.md`
+
+**Exclusion** (`exclude`):
+- Exclude specific notes from results
+- Comma-separated list of note names
+- Supports wiki-link format: `[[Note1]], [[Note2]]`
+- Unknown notes in exclusion list are silently ignored
+
+**Filter Combination**:
+- Multiple filters use AND logic
+- Note must match ALL specified filters to appear
+- Example: `filterTag: #active` + `filterFolder: Work/` shows only notes that are tagged AND in the folder
+
+#### Node Limiting
+
+**Max Nodes** (`maxNodes`):
+- Limit the total number of nodes displayed
+- When exceeded, shows truncation indicator: "(+N more...)"
+- Preserves tree structure up to the limit
+- Useful for large trees or overview displays
+
+#### Visual Styles
+
+Choose different visual presentations for your trees:
+
+**Detailed**:
+- Full padding and spacing
+- Enhanced visual hierarchy
+- Best for focused reading
+
+**Minimal**:
+- Ultra-compact layout
+- Minimal padding and spacing
+- Best for dense overviews
+
+**Compact**:
+- Balanced between detailed and minimal
+- Standard spacing with reduced padding
+- General-purpose style
 
 #### Display Modes
 
@@ -139,7 +225,7 @@ depth: 3
 - Interactive navigation with clickable links
 
 **List Mode**:
-- Flat list of all results
+- Flat list of all results for siblings/cousins
 - No tree structure or toggles
 - Compact and simple
 
@@ -192,6 +278,80 @@ collapsed: true
 type: ancestors
 field: category
 depth: 5
+```
+````
+
+**Filter by tag:**
+````markdown
+```relation-tree
+type: descendants
+filterTag: #project
+title: simple
+```
+````
+
+**Filter by folder:**
+````markdown
+```relation-tree
+type: ancestors
+filterFolder: Work/Projects/
+title: simple
+```
+````
+
+**Exclude specific notes:**
+````markdown
+```relation-tree
+type: siblings
+exclude: [[Template]], [[Archive]]
+```
+````
+
+**Combine multiple filters:**
+````markdown
+```relation-tree
+type: descendants
+filterTag: #active
+filterFolder: Projects/
+exclude: [[Old Project]]
+title: detailed
+```
+````
+
+**Limit large trees:**
+````markdown
+```relation-tree
+type: descendants
+depth: 10
+maxNodes: 20
+title: simple
+```
+````
+
+**Use visual styles:**
+````markdown
+```relation-tree
+type: ancestors
+style: detailed
+title: simple
+```
+````
+
+**Kitchen sink - all options:**
+````markdown
+```relation-tree
+note: [[My Project]]
+type: descendants
+field: project
+depth: 5
+filterTag: #active
+filterFolder: Work/
+exclude: [[Template]]
+maxNodes: 30
+style: detailed
+title: detailed
+collapsed: false
+showCycles: true
 ```
 ````
 

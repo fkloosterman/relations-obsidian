@@ -130,12 +130,17 @@ export function selectNote(
 				originalOnClose.call(this);
 			}
 
-			// If we haven't resolved yet, user cancelled
-			if (!hasResolved) {
-				hasResolved = true;
-				console.log('[selectNote] Resolving with null (cancelled)');
-				resolve(null);
-			}
+			// Delay checking hasResolved to let onChooseItem run first
+			// (Obsidian calls onClose before onChooseItem when selecting)
+			setTimeout(() => {
+				if (!hasResolved) {
+					hasResolved = true;
+					console.log('[selectNote] Resolving with null (cancelled)');
+					resolve(null);
+				} else {
+					console.log('[selectNote] Already resolved, not cancelling');
+				}
+			}, 10);
 		};
 
 		// When selection happens, mark as resolved

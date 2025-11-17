@@ -31,11 +31,15 @@ export interface GraphStatistics {
 }
 
 /**
- * Finds all root notes (notes with no parents but with children) in the graph.
+ * Finds all root notes in the graph.
  *
- * Root notes are the top-level nodes in hierarchies - they have children
- * but no parents. Isolated notes (with neither parents nor children) are
- * excluded.
+ * Root notes are the top-level nodes in hierarchies - they have no parents.
+ * A note is considered a root if it has no parents AND either:
+ * 1. Has at least one child, OR
+ * 2. Has an explicit (even if empty) parent field in frontmatter
+ *
+ * This distinguishes files that are part of the hierarchy (with empty parent field)
+ * from files that don't participate in the hierarchy at all (no parent field).
  *
  * @param graph - Relation graph to analyze
  * @returns Array of root notes, sorted alphabetically
@@ -51,9 +55,10 @@ export function findRootNotes(graph: RelationGraph): TFile[] {
   for (const file of allFiles) {
     const parents = graph.getParents(file);
     const children = graph.getChildren(file);
+    const hasParentField = graph.hasParentField(file);
 
-    // Root note: no parents but has at least one child
-    if (parents.length === 0 && children.length > 0) {
+    // Root note: no parents AND (has children OR has parent field)
+    if (parents.length === 0 && (children.length > 0 || hasParentField)) {
       roots.push(file);
     }
   }

@@ -89,6 +89,17 @@ export class RelationGraph {
   }
 
   /**
+   * Checks if a file has the parent field in its frontmatter.
+   * Returns true even if the field is empty.
+   *
+   * @param file - The file to check
+   * @returns True if the file has the parent field, false otherwise
+   */
+  hasParentField(file: TFile): boolean {
+    return this.frontmatterCache.hasField(file, this.parentField);
+  }
+
+  /**
    * Gets a file by its path.
    *
    * @param path - The file path to look up

@@ -20,6 +20,25 @@ export class FrontmatterCache {
 	}
 
 	/**
+	 * Checks if a file has a specific frontmatter field (even if empty).
+	 *
+	 * @param file - The file to query
+	 * @param fieldName - The frontmatter field name
+	 * @returns True if the field exists in frontmatter, false otherwise
+	 *
+	 * @example
+	 * const cache = new FrontmatterCache(app);
+	 * const hasParent = cache.hasField(file, 'parent');
+	 * // Returns: true if 'parent:' exists in frontmatter, even if empty
+	 */
+	hasField(file: TFile, fieldName: string): boolean {
+		const metadata = this.getMetadata(file);
+		if (!metadata?.frontmatter) return false;
+
+		return fieldName in metadata.frontmatter;
+	}
+
+	/**
 	 * Gets the value of a frontmatter field for a file.
 	 *
 	 * @param file - The file to query

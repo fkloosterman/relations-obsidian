@@ -109,12 +109,14 @@ export class ParentFieldConfigForm {
     const titleEl = headerEl.createSpan('config-title');
     titleEl.setText(`Field: "${this.config.name}"`);
 
-    // Default star icon
+    // Default star icon - filled for default, outline for non-default
     const starIcon = headerEl.createSpan('default-star-icon');
     starIcon.setAttribute('aria-label', this.isDefault ? 'Default parent field' : 'Set as default parent field');
     setIcon(starIcon, this.isDefault ? 'star' : 'star');
     if (this.isDefault) {
       starIcon.addClass('is-default');
+    } else {
+      starIcon.addClass('not-default');
     }
     starIcon.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -123,17 +125,17 @@ export class ParentFieldConfigForm {
       }
     });
 
-    // Remove button
+    // Remove button (trash icon)
     const removeBtn = headerEl.createEl('button', {
-      text: 'Remove',
-      cls: 'mod-warning'
+      cls: 'mod-warning icon-button',
+      attr: { 'aria-label': this.isDefault ? 'Cannot remove default parent field' : 'Remove field' }
     });
+    setIcon(removeBtn, 'trash-2');
 
     // Gray out and disable if this is the default field
     if (this.isDefault) {
       removeBtn.disabled = true;
       removeBtn.addClass('is-disabled');
-      removeBtn.setAttribute('aria-label', 'Cannot remove default parent field');
     }
 
     removeBtn.onclick = () => {

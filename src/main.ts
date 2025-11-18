@@ -1,4 +1,4 @@
-import { App, Plugin, PluginSettingTab, Setting, TFile, TAbstractFile, Notice, Modal } from 'obsidian';
+import { App, Plugin, PluginSettingTab, Setting, TFile, TAbstractFile, Notice, Modal, setIcon } from 'obsidian';
 import { RelationGraph } from './relation-graph';
 import { RelationshipEngine } from './relationship-engine';
 import { DiagnosticSeverity } from './graph-validator';
@@ -775,33 +775,6 @@ class ParentRelationSettingTab extends PluginSettingTab {
             modal.open();
           });
       });
-  }
-
-  /**
-   * Renders documentation and support section.
-   */
-  private renderDocumentationAndSupport(containerEl: HTMLElement): void {
-    new Setting(containerEl)
-      .setName('Support development')
-      .setHeading();
-
-    new Setting(containerEl)
-      .setDesc('If you find Relation Explorer helpful, please consider supporting its development.')
-      .addButton(button => {
-        button
-          .setButtonText('GitHub Sponsors')
-          .onClick(() => {
-            window.open('https://github.com/sponsors/fkloosterman', '_blank');
-          });
-      })
-      .addButton(button => {
-        button
-          .setButtonText('Ko-fi')
-          .setCta()
-          .onClick(() => {
-            window.open('https://ko-fi.com/fabiankloosterman', '_blank');
-          });
-      });
 
     new Setting(containerEl)
       .setName('Documentation')
@@ -812,6 +785,36 @@ class ParentRelationSettingTab extends PluginSettingTab {
           .onClick(() => {
             window.open('https://fkloosterman.github.io/relations-obsidian/', '_blank');
           });
+      });
+  }
+
+  /**
+   * Renders support development section.
+   */
+  private renderDocumentationAndSupport(containerEl: HTMLElement): void {
+    new Setting(containerEl)
+      .setName('Support development')
+      .setHeading();
+
+    new Setting(containerEl)
+      .setDesc('If you find Relation Explorer helpful, please consider supporting its development.')
+      .addButton(button => {
+        const btn = button.buttonEl;
+        setIcon(btn, 'heart');
+        btn.createSpan({ text: ' Sponsor' });
+        btn.addClass('sponsor-button');
+        button.onClick(() => {
+          window.open('https://github.com/sponsors/fkloosterman', '_blank');
+        });
+      })
+      .addButton(button => {
+        const btn = button.buttonEl;
+        setIcon(btn, 'coffee');
+        btn.createSpan({ text: ' Buy me a coffee' });
+        button.setCta();
+        button.onClick(() => {
+          window.open('https://ko-fi.com/fabiankloosterman', '_blank');
+        });
       });
   }
 
@@ -830,6 +833,7 @@ class ParentRelationSettingTab extends PluginSettingTab {
       .addButton(button => {
         button
           .setButtonText('Copy to clipboard')
+          .setCta()
           .onClick(async () => {
             const json = JSON.stringify(this.plugin.settings, null, 2);
             await navigator.clipboard.writeText(json);
@@ -839,7 +843,6 @@ class ParentRelationSettingTab extends PluginSettingTab {
       .addButton(button => {
         button
           .setButtonText('Save to file')
-          .setCta()
           .onClick(async () => {
             try {
               const json = JSON.stringify(this.plugin.settings, null, 2);
@@ -850,7 +853,7 @@ class ParentRelationSettingTab extends PluginSettingTab {
               a.download = 'relation-explorer-config.json';
               a.click();
               URL.revokeObjectURL(url);
-              new Notice('Configuration saved to file');
+              // Note: Browser will show download UI, so we don't need a notice
             } catch (e) {
               new Notice('Failed to save file: ' + (e as Error).message, 5000);
             }
@@ -863,6 +866,7 @@ class ParentRelationSettingTab extends PluginSettingTab {
       .addButton(button => {
         button
           .setButtonText('Paste from clipboard')
+          .setCta()
           .onClick(async () => {
             try {
               const json = await navigator.clipboard.readText();
@@ -988,12 +992,13 @@ class ParentRelationSettingTab extends PluginSettingTab {
       .setName('Add parent field')
       .setDesc('Configure parent fields with custom display names, visibility, and behavior')
       .addButton(button => {
-        button
-          .setButtonText('Add field')
-          .setCta()
-          .onClick(() => {
-            this.addParentField();
-          });
+        const btn = button.buttonEl;
+        setIcon(btn, 'plus');
+        btn.createSpan({ text: ' Add field' });
+        button.setCta();
+        button.onClick(() => {
+          this.addParentField();
+        });
       });
 
     // Render each field configuration
@@ -1197,9 +1202,10 @@ class ChangelogModal extends Modal {
     `;
 
     const kofiBtn = buttonContainer.createEl('button', {
-      text: 'Support on Ko-fi',
       cls: 'mod-cta'
     });
+    setIcon(kofiBtn, 'coffee');
+    kofiBtn.createSpan({ text: ' Buy me a coffee' });
     kofiBtn.onclick = () => {
       window.open('https://ko-fi.com/fabiankloosterman', '_blank');
     };
@@ -1216,22 +1222,31 @@ class ChangelogModal extends Modal {
     const { contentEl } = this;
 
     try {
-      // Try to load CHANGELOG.md from plugin directory
-      const adapter = this.app.vault.adapter;
-      const pluginDir = (this.app.vault as any).configDir + '/plugins/relations-obsidian';
-      const changelogPath = pluginDir + '/CHANGELOG.md';
-
+      // Try to load CHANGELOG.md from plugin directory using fetch
+      // In production, the changelog will be bundled with the plugin
       let changelogContent: string;
 
-      // Check if we can read the file
-      if (typeof adapter.read === 'function') {
-        try {
-          changelogContent = await adapter.read(changelogPath);
-        } catch (e) {
-          // If file doesn't exist, use fallback
-          changelogContent = this.getFallbackChangelog();
+      try {
+        // Try to fetch from plugin directory
+        const response = await fetch('app://local/' + (this.app.vault as any).configDir + '/plugins/relations-obsidian/CHANGELOG.md');
+        if (response.ok) {
+          changelogContent = await response.text();
+        } else {
+          // Fallback to using adapter if available
+          const adapter = this.app.vault.adapter;
+          const manifestDir = (this.app.vault as any).configDir;
+          const pluginId = 'relations-obsidian';
+          const changelogPath = `${manifestDir}/plugins/${pluginId}/CHANGELOG.md`;
+
+          if (adapter && typeof (adapter as any).readBinary === 'function') {
+            const buffer = await (adapter as any).readBinary(changelogPath);
+            changelogContent = new TextDecoder().decode(buffer);
+          } else {
+            changelogContent = this.getFallbackChangelog();
+          }
         }
-      } else {
+      } catch (e) {
+        console.log('Could not load CHANGELOG.md, using fallback', e);
         changelogContent = this.getFallbackChangelog();
       }
 
@@ -1243,10 +1258,11 @@ class ChangelogModal extends Modal {
         padding: var(--size-4-3);
       `;
 
-      // Simple markdown rendering - you could use a more sophisticated approach
+      // Use Obsidian's markdown renderer
       await this.renderMarkdown(changelogContent, changelogDiv);
 
     } catch (e) {
+      console.error('Failed to load changelog:', e);
       contentEl.createEl('p', {
         text: 'Unable to load changelog. Please visit the GitHub repository for the latest updates.'
       });

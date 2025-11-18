@@ -930,21 +930,6 @@ class ParentRelationSettingTab extends PluginSettingTab {
       });
 
     new Setting(section)
-      .setName('UI Style')
-      .setDesc('Parent field selector style (auto adapts based on count)')
-      .addDropdown(dropdown => {
-        dropdown.addOption('auto', 'Auto (≤4: segmented, >4: dropdown)');
-        dropdown.addOption('segmented', 'Always Segmented Control');
-        dropdown.addOption('dropdown', 'Always Dropdown');
-        dropdown.setValue(this.plugin.settings.uiStyle);
-        dropdown.onChange(async (value) => {
-          this.plugin.settings.uiStyle = value as 'auto' | 'segmented' | 'dropdown';
-          await this.plugin.saveSettings();
-          this.plugin.refreshSidebarViews();
-        });
-      });
-
-    new Setting(section)
       .setName('Diagnostic Mode')
       .setDesc('Show diagnostic information in console')
       .addToggle(toggle => {

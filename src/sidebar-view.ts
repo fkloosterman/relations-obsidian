@@ -184,7 +184,6 @@ export class RelationSidebarView extends ItemView {
 				{
 					fields: this.plugin.settings.parentFields,
 					selectedField: this.viewState.selectedParentField,
-					uiStyle: this.plugin.settings.uiStyle,
 					onChange: (fieldName: string) => {
 						this.onFieldChange(fieldName);
 					}
@@ -491,7 +490,6 @@ export class RelationSidebarView extends ItemView {
 		const content = sectionContainer.createDiv('relation-section-content');
 		if (isCollapsed) {
 			content.addClass('is-collapsed');
-			content.style.display = 'none';
 		}
 
 		// Build and render tree/list for this section
@@ -568,8 +566,6 @@ export class RelationSidebarView extends ItemView {
 		const sortedSiblings = this.sortSiblings(siblings, sectionConfig.sortOrder || 'alphabetical');
 
 		const listContainer = container.createDiv('relation-siblings-list');
-		// Match font size with tree views
-		listContainer.style.fontSize = 'var(--font-ui-small)';
 
 		sortedSiblings.forEach((sibling: TFile) => {
 			const item = listContainer.createDiv('relation-sibling-item');
@@ -670,8 +666,6 @@ export class RelationSidebarView extends ItemView {
 		const sortedRoots = roots.map(node => node.file);
 
 		const listContainer = container.createDiv('relation-siblings-list');
-		// Match font size with tree views
-		listContainer.style.fontSize = 'var(--font-ui-small)';
 
 		sortedRoots.forEach((root: TFile) => {
 			const item = listContainer.createDiv('relation-sibling-item');
@@ -1028,8 +1022,7 @@ export class RelationSidebarView extends ItemView {
 		if (this.fieldSelector) {
 			this.fieldSelector.update({
 				fields: this.plugin.settings.parentFields,
-				selectedField: this.viewState.selectedParentField,
-				uiStyle: this.plugin.settings.uiStyle
+				selectedField: this.viewState.selectedParentField
 			});
 		}
 	}

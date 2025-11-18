@@ -101,6 +101,8 @@
 	color: var(--text-warning);
 	flex-shrink: 0;
 	margin-left: var(--size-2-2);
+	cursor: help;
+	font-size: 0.9em;
 }
 
 .relation-tree-cycle-indicator svg {
@@ -421,6 +423,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--size-2-2);
+  font-size: var(--font-ui-small);
 }
 
 .relation-sibling-item {
@@ -547,6 +550,10 @@
   padding: var(--size-4-4);
 }
 
+.parent-field-config-body.is-collapsed {
+  display: none;
+}
+
 /* Field settings */
 .field-settings {
   margin-bottom: var(--size-4-5);
@@ -566,6 +573,9 @@
 
 .section-header {
   margin-bottom: var(--size-4-3);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .section-header h4 {
@@ -573,6 +583,23 @@
   padding: 0;
   font-size: 1em;
   color: var(--text-normal);
+  flex: 1;
+}
+
+.section-reorder-buttons {
+  display: flex;
+  gap: var(--size-2-2);
+}
+
+.section-reorder-buttons button {
+  padding: var(--size-2-1) var(--size-4-2);
+}
+
+.section-description {
+  padding: var(--size-4-3);
+  background-color: var(--background-secondary);
+  border-radius: var(--radius-s);
+  margin-top: var(--size-4-2);
 }
 
 /* Configuration actions */

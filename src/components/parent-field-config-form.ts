@@ -56,7 +56,7 @@ export class ParentFieldConfigForm {
     // Body (collapsible)
     const bodyEl = this.formEl.createDiv('parent-field-config-body');
     if (this.collapsed) {
-      bodyEl.style.display = 'none';
+      bodyEl.addClass('is-collapsed');
     }
 
     this.renderFieldSettings(bodyEl);
@@ -164,25 +164,17 @@ export class ParentFieldConfigForm {
 
     // Section header with reorder controls
     const headerEl = sectionEl.createDiv('section-header');
-    headerEl.style.display = 'flex';
-    headerEl.style.alignItems = 'center';
-    headerEl.style.justifyContent = 'space-between';
 
     const titleEl = headerEl.createEl('h4', { text: sectionTitle });
-    titleEl.style.margin = '0';
-    titleEl.style.flex = '1';
 
     // Reorder buttons container
     const reorderContainer = headerEl.createDiv('section-reorder-buttons');
-    reorderContainer.style.display = 'flex';
-    reorderContainer.style.gap = '4px';
 
     // Up arrow
     const upBtn = reorderContainer.createEl('button', {
       text: '↑',
       cls: 'clickable-icon'
     });
-    upBtn.style.padding = '2px 8px';
     upBtn.disabled = orderIndex === 0;
     upBtn.onclick = (e) => {
       e.preventDefault();
@@ -194,7 +186,6 @@ export class ParentFieldConfigForm {
       text: '↓',
       cls: 'clickable-icon'
     });
-    downBtn.style.padding = '2px 8px';
     downBtn.disabled = orderIndex === (this.config.sectionOrder?.length ?? 1) - 1;
     downBtn.onclick = (e) => {
       e.preventDefault();
@@ -367,10 +358,10 @@ export class ParentFieldConfigForm {
 
     if (bodyEl && icon) {
       if (this.collapsed) {
-        bodyEl.style.display = 'none';
+        bodyEl.addClass('is-collapsed');
         icon.setText('▶');
       } else {
-        bodyEl.style.display = 'block';
+        bodyEl.removeClass('is-collapsed');
         icon.setText('▼');
       }
     }
@@ -401,25 +392,17 @@ export class ParentFieldConfigForm {
 
     // Section header with reorder controls
     const headerEl = sectionEl.createDiv('section-header');
-    headerEl.style.display = 'flex';
-    headerEl.style.alignItems = 'center';
-    headerEl.style.justifyContent = 'space-between';
 
     const titleEl = headerEl.createEl('h4', { text: 'Reference Note Section' });
-    titleEl.style.margin = '0';
-    titleEl.style.flex = '1';
 
     // Reorder buttons container
     const reorderContainer = headerEl.createDiv('section-reorder-buttons');
-    reorderContainer.style.display = 'flex';
-    reorderContainer.style.gap = '4px';
 
     // Up arrow
     const upBtn = reorderContainer.createEl('button', {
       text: '↑',
       cls: 'clickable-icon'
     });
-    upBtn.style.padding = '2px 8px';
     upBtn.disabled = orderIndex === 0;
     upBtn.onclick = (e) => {
       e.preventDefault();
@@ -431,7 +414,6 @@ export class ParentFieldConfigForm {
       text: '↓',
       cls: 'clickable-icon'
     });
-    downBtn.style.padding = '2px 8px';
     downBtn.disabled = orderIndex === (this.config.sectionOrder?.length ?? 1) - 1;
     downBtn.onclick = (e) => {
       e.preventDefault();
@@ -440,10 +422,6 @@ export class ParentFieldConfigForm {
 
     // Description
     const descEl = sectionEl.createDiv('section-description');
-    descEl.style.padding = '12px';
-    descEl.style.backgroundColor = 'var(--background-secondary)';
-    descEl.style.borderRadius = '4px';
-    descEl.style.marginTop = '8px';
     descEl.setText('Displays the current file with a pin button. This section is always visible and cannot be hidden.');
   }
 

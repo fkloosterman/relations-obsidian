@@ -107,7 +107,7 @@ export class ParentFieldConfigForm {
 
     // Title
     const titleEl = headerEl.createSpan('config-title');
-    titleEl.setText(`Field: "${this.config.name}"`);
+    titleEl.setText(this.config.name);
 
     // Default star icon - filled for default, outline for non-default
     const starIcon = headerEl.createSpan('default-star-icon');
@@ -450,7 +450,7 @@ export class ParentFieldConfigForm {
 
     const titleEl = this.formEl.querySelector('.config-title');
     if (titleEl) {
-      titleEl.setText(`Field: "${this.config.name}"`);
+      titleEl.setText(this.config.name);
     }
   }
 

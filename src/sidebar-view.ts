@@ -474,7 +474,7 @@ export class RelationSidebarView extends ItemView {
 
 		// Add toggle button
 		const toggle = header.createDiv('relation-section-toggle');
-		toggle.setText(isCollapsed ? '▶' : '▼');
+		setIcon(toggle, isCollapsed ? 'chevron-right' : 'chevron-down');
 
 		const title = header.createDiv('relation-section-title');
 		title.setText(sectionConfig.displayName || sectionType);

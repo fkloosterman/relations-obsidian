@@ -361,11 +361,19 @@
 }
 
 .relation-section-toggle {
-  font-size: var(--font-ui-small);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: var(--text-muted);
   transition: transform 0.15s ease;
-  width: var(--size-4-4);
-  text-align: center;
+  width: var(--icon-size);
+  height: var(--icon-size);
+  flex-shrink: 0;
+}
+
+.relation-section-toggle svg {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
 }
 
 .relation-section-title {
@@ -527,11 +535,18 @@
 }
 
 .collapse-icon {
-  width: var(--size-4-5);
-  text-align: center;
-  font-size: var(--font-ui-small);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--icon-size);
+  height: var(--icon-size);
   color: var(--text-muted);
   flex-shrink: 0;
+}
+
+.collapse-icon svg {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
 }
 
 .config-title {

@@ -850,7 +850,9 @@ class ParentRelationSettingTab extends PluginSettingTab {
 
       const buttonContainer = modal.contentEl.createDiv('modal-button-container');
 
-      const cancelBtn = buttonContainer.createEl('button', { text: 'Cancel' });
+      const cancelBtn = buttonContainer.createEl('button', {
+        text: 'Cancel'
+      });
       cancelBtn.onclick = () => {
         modal.close();
         resolve(false);

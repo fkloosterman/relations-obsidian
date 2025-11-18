@@ -1,4 +1,4 @@
-import { Setting } from 'obsidian';
+import { Setting, setIcon } from 'obsidian';
 import { ParentFieldConfig, SectionConfig } from '../types';
 
 /**
@@ -92,7 +92,7 @@ export class ParentFieldConfigForm {
 
     // Collapse icon
     const collapseIcon = headerEl.createSpan('collapse-icon');
-    collapseIcon.setText(this.collapsed ? '▶' : '▼');
+    setIcon(collapseIcon, this.collapsed ? 'chevron-right' : 'chevron-down');
     collapseIcon.addEventListener('click', (e) => {
       e.stopPropagation();
       this.toggleCollapse();
@@ -359,10 +359,10 @@ export class ParentFieldConfigForm {
     if (bodyEl && icon) {
       if (this.collapsed) {
         bodyEl.addClass('is-collapsed');
-        icon.setText('▶');
+        setIcon(icon, 'chevron-right');
       } else {
         bodyEl.removeClass('is-collapsed');
-        icon.setText('▼');
+        setIcon(icon, 'chevron-down');
       }
     }
 

@@ -29,7 +29,8 @@ jobs:
           ls -la main.js
           ls -la manifest.json
           ls -la styles.css
-      
+          ls -la CHANGELOG.md
+
       - name: Create release
         uses: softprops/action-gh-release@v1
         with:
@@ -37,6 +38,7 @@ jobs:
             main.js
             manifest.json
             styles.css
+            CHANGELOG.md
           draft: false
           generate_release_notes: true
         env:

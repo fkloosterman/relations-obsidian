@@ -184,7 +184,6 @@ export class RelationSidebarView extends ItemView {
 				{
 					fields: this.plugin.settings.parentFields,
 					selectedField: this.viewState.selectedParentField,
-					uiStyle: this.plugin.settings.uiStyle,
 					onChange: (fieldName: string) => {
 						this.onFieldChange(fieldName);
 					}
@@ -208,41 +207,15 @@ export class RelationSidebarView extends ItemView {
 		button.empty();
 		const isPinned = this.isPinned();
 
+		setIcon(button, 'pin');
+
 		if (isPinned) {
-			setIcon(button, 'pin');
 			button.addClass('is-active');
 			button.setAttribute('aria-label', 'Unpin from this note');
-			// Bold visual feedback for pinned state
-			button.style.color = 'var(--text-on-accent)';
-			button.style.backgroundColor = 'var(--interactive-accent)';
-			button.style.borderRadius = '4px';
-			button.style.padding = '6px';
-			button.style.opacity = '1';
 		} else {
-			setIcon(button, 'pin');
 			button.removeClass('is-active');
 			button.setAttribute('aria-label', 'Pin to this note');
-			// Subtle visual feedback for unpinned state
-			button.style.color = 'var(--icon-color)';
-			button.style.backgroundColor = 'transparent';
-			button.style.borderRadius = '4px';
-			button.style.padding = '6px';
-			button.style.opacity = '0.6';
 		}
-
-		// Hover effect
-		button.onmouseenter = () => {
-			if (!isPinned) {
-				button.style.backgroundColor = 'var(--background-modifier-hover)';
-				button.style.opacity = '1';
-			}
-		};
-		button.onmouseleave = () => {
-			if (!isPinned) {
-				button.style.backgroundColor = 'transparent';
-				button.style.opacity = '0.6';
-			}
-		};
 	}
 
 	/**
@@ -458,37 +431,19 @@ export class RelationSidebarView extends ItemView {
 	 */
 	private renderReferenceNote(file: TFile): void {
 		const referenceContainer = this.contentContainer.createDiv('relation-reference-note');
-		// Flex container for horizontal layout
-		referenceContainer.style.display = 'flex';
-		referenceContainer.style.alignItems = 'center';
-		referenceContainer.style.justifyContent = 'space-between';
-		referenceContainer.style.padding = '8px 12px';
-		referenceContainer.style.marginBottom = '8px';
-		referenceContainer.style.backgroundColor = 'var(--background-secondary)';
-		referenceContainer.style.borderRadius = '6px';
 
 		const nameContainer = referenceContainer.createDiv('relation-reference-note-content');
-		nameContainer.style.display = 'flex';
-		nameContainer.style.alignItems = 'center';
-		nameContainer.style.gap = '8px';
 
 		// File icon
 		const icon = nameContainer.createDiv('relation-reference-note-icon');
-		icon.style.display = 'flex';
-		icon.style.alignItems = 'center';
-		icon.style.opacity = '0.7';
 		setIcon(icon, 'file');
 
 		// File name
 		const name = nameContainer.createDiv('relation-reference-note-name');
 		name.setText(file.basename);
-		name.style.fontWeight = '500';
 
 		// Pin button
 		const pinButton = referenceContainer.createDiv('relation-sidebar-pin-button');
-		pinButton.style.display = 'flex';
-		pinButton.style.alignItems = 'center';
-		pinButton.style.cursor = 'pointer';
 		this.updatePinButton(pinButton);
 
 		pinButton.addEventListener('click', () => {
@@ -519,7 +474,7 @@ export class RelationSidebarView extends ItemView {
 
 		// Add toggle button
 		const toggle = header.createDiv('relation-section-toggle');
-		toggle.setText(isCollapsed ? '▶' : '▼');
+		setIcon(toggle, isCollapsed ? 'chevron-right' : 'chevron-down');
 
 		const title = header.createDiv('relation-section-title');
 		title.setText(sectionConfig.displayName || sectionType);
@@ -535,7 +490,6 @@ export class RelationSidebarView extends ItemView {
 		const content = sectionContainer.createDiv('relation-section-content');
 		if (isCollapsed) {
 			content.addClass('is-collapsed');
-			content.style.display = 'none';
 		}
 
 		// Build and render tree/list for this section
@@ -612,8 +566,6 @@ export class RelationSidebarView extends ItemView {
 		const sortedSiblings = this.sortSiblings(siblings, sectionConfig.sortOrder || 'alphabetical');
 
 		const listContainer = container.createDiv('relation-siblings-list');
-		// Match font size with tree views
-		listContainer.style.fontSize = 'var(--font-ui-small)';
 
 		sortedSiblings.forEach((sibling: TFile) => {
 			const item = listContainer.createDiv('relation-sibling-item');
@@ -714,8 +666,6 @@ export class RelationSidebarView extends ItemView {
 		const sortedRoots = roots.map(node => node.file);
 
 		const listContainer = container.createDiv('relation-siblings-list');
-		// Match font size with tree views
-		listContainer.style.fontSize = 'var(--font-ui-small)';
 
 		sortedRoots.forEach((root: TFile) => {
 			const item = listContainer.createDiv('relation-sibling-item');
@@ -1072,8 +1022,7 @@ export class RelationSidebarView extends ItemView {
 		if (this.fieldSelector) {
 			this.fieldSelector.update({
 				fields: this.plugin.settings.parentFields,
-				selectedField: this.viewState.selectedParentField,
-				uiStyle: this.plugin.settings.uiStyle
+				selectedField: this.viewState.selectedParentField
 			});
 		}
 	}

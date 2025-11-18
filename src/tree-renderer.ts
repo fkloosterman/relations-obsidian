@@ -462,9 +462,6 @@ export class TreeRenderer {
 
 		// Cycle icon (🔄)
 		indicator.textContent = '🔄';
-		indicator.style.marginLeft = '0.5em';
-		indicator.style.cursor = 'help';
-		indicator.style.fontSize = '0.9em';
 
 		element.appendChild(indicator);
 	}

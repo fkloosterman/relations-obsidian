@@ -1,4 +1,4 @@
-import { Setting } from 'obsidian';
+import { Setting, setIcon } from 'obsidian';
 import { ParentFieldConfig, SectionConfig } from '../types';
 
 /**
@@ -22,9 +22,12 @@ export class ParentFieldConfigForm {
   private onChange: (config: ParentFieldConfig) => void;
   private onRemove: () => void;
   private onDuplicate: () => void;
+  private onSetDefault: () => void;
+  private isDefault: boolean;
   private onCollapsedChange?: (collapsed: boolean) => void;
   private collapsed: boolean = true;
   private formEl: HTMLElement | null = null;
+  private sectionCollapsedStates: Map<string, boolean> = new Map();
 
   constructor(
     containerEl: HTMLElement,
@@ -32,6 +35,8 @@ export class ParentFieldConfigForm {
     onChange: (config: ParentFieldConfig) => void,
     onRemove: () => void,
     onDuplicate: () => void,
+    isDefault: boolean,
+    onSetDefault: () => void,
     initialCollapsed: boolean = true,
     onCollapsedChange?: (collapsed: boolean) => void
   ) {
@@ -40,6 +45,8 @@ export class ParentFieldConfigForm {
     this.onChange = onChange;
     this.onRemove = onRemove;
     this.onDuplicate = onDuplicate;
+    this.isDefault = isDefault;
+    this.onSetDefault = onSetDefault;
     this.collapsed = initialCollapsed;
     this.onCollapsedChange = onCollapsedChange;
   }
@@ -56,7 +63,7 @@ export class ParentFieldConfigForm {
     // Body (collapsible)
     const bodyEl = this.formEl.createDiv('parent-field-config-body');
     if (this.collapsed) {
-      bodyEl.style.display = 'none';
+      bodyEl.addClass('is-collapsed');
     }
 
     this.renderFieldSettings(bodyEl);
@@ -92,7 +99,7 @@ export class ParentFieldConfigForm {
 
     // Collapse icon
     const collapseIcon = headerEl.createSpan('collapse-icon');
-    collapseIcon.setText(this.collapsed ? '▶' : '▼');
+    setIcon(collapseIcon, this.collapsed ? 'chevron-right' : 'chevron-down');
     collapseIcon.addEventListener('click', (e) => {
       e.stopPropagation();
       this.toggleCollapse();
@@ -100,15 +107,41 @@ export class ParentFieldConfigForm {
 
     // Title
     const titleEl = headerEl.createSpan('config-title');
-    titleEl.setText(`Field: "${this.config.name}"`);
+    titleEl.setText(this.config.name);
 
-    // Remove button
-    const removeBtn = headerEl.createEl('button', {
-      text: 'Remove',
-      cls: 'mod-warning'
+    // Default star icon - filled for default, outline for non-default
+    const starIcon = headerEl.createSpan('default-star-icon');
+    starIcon.setAttribute('aria-label', this.isDefault ? 'Default parent field' : 'Set as default parent field');
+    setIcon(starIcon, this.isDefault ? 'star' : 'star');
+    if (this.isDefault) {
+      starIcon.addClass('is-default');
+    } else {
+      starIcon.addClass('not-default');
+    }
+    starIcon.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (!this.isDefault) {
+        this.onSetDefault();
+      }
     });
+
+    // Remove button (trash icon)
+    const removeBtn = headerEl.createEl('button', {
+      cls: 'mod-warning icon-button',
+      attr: { 'aria-label': this.isDefault ? 'Cannot remove default parent field' : 'Remove field' }
+    });
+    setIcon(removeBtn, 'trash-2');
+
+    // Gray out and disable if this is the default field
+    if (this.isDefault) {
+      removeBtn.disabled = true;
+      removeBtn.addClass('is-disabled');
+    }
+
     removeBtn.onclick = () => {
-      this.onRemove();
+      if (!this.isDefault) {
+        this.onRemove();
+      }
     };
 
     headerEl.onclick = (e) => {
@@ -162,30 +195,31 @@ export class ParentFieldConfigForm {
   ): void {
     const sectionEl = containerEl.createDiv('section-config');
 
-    // Section header with reorder controls
-    const headerEl = sectionEl.createDiv('section-header');
-    headerEl.style.display = 'flex';
-    headerEl.style.alignItems = 'center';
-    headerEl.style.justifyContent = 'space-between';
+    // Track collapsed state for this section (default to collapsed for cleaner UI)
+    const sectionCollapsed = this.sectionCollapsedStates.get(sectionKey) ?? true;
+
+    // Section header with collapse toggle and reorder controls
+    const headerEl = sectionEl.createDiv('section-config-header');
+    headerEl.style.cursor = 'pointer';
+
+    // Collapse icon
+    const collapseIcon = headerEl.createSpan('section-config-collapse-icon');
+    setIcon(collapseIcon, sectionCollapsed ? 'chevron-right' : 'chevron-down');
 
     const titleEl = headerEl.createEl('h4', { text: sectionTitle });
-    titleEl.style.margin = '0';
-    titleEl.style.flex = '1';
 
     // Reorder buttons container
     const reorderContainer = headerEl.createDiv('section-reorder-buttons');
-    reorderContainer.style.display = 'flex';
-    reorderContainer.style.gap = '4px';
 
     // Up arrow
     const upBtn = reorderContainer.createEl('button', {
       text: '↑',
       cls: 'clickable-icon'
     });
-    upBtn.style.padding = '2px 8px';
     upBtn.disabled = orderIndex === 0;
     upBtn.onclick = (e) => {
       e.preventDefault();
+      e.stopPropagation();
       this.moveSectionUp(orderIndex);
     };
 
@@ -194,17 +228,32 @@ export class ParentFieldConfigForm {
       text: '↓',
       cls: 'clickable-icon'
     });
-    downBtn.style.padding = '2px 8px';
     downBtn.disabled = orderIndex === (this.config.sectionOrder?.length ?? 1) - 1;
     downBtn.onclick = (e) => {
       e.preventDefault();
+      e.stopPropagation();
       this.moveSectionDown(orderIndex);
     };
+
+    // Make header clickable to toggle
+    headerEl.addEventListener('click', (e) => {
+      // Don't toggle if clicking the reorder buttons
+      if (e.target === upBtn || e.target === downBtn) {
+        return;
+      }
+      this.toggleSectionCollapse(sectionKey);
+    });
+
+    // Section body (collapsible)
+    const sectionBodyEl = sectionEl.createDiv('section-config-body');
+    if (sectionCollapsed) {
+      sectionBodyEl.addClass('is-collapsed');
+    }
 
     const config = this.config[sectionKey];
 
     // Display name
-    new Setting(sectionEl)
+    new Setting(sectionBodyEl)
       .setName('Display Name')
       .setDesc('Name shown in sidebar')
       .addText(text => {
@@ -217,7 +266,7 @@ export class ParentFieldConfigForm {
       });
 
     // Visibility
-    new Setting(sectionEl)
+    new Setting(sectionBodyEl)
       .setName('Visible')
       .setDesc('Show this section in the sidebar')
       .addToggle(toggle => {
@@ -229,7 +278,7 @@ export class ParentFieldConfigForm {
       });
 
     // Initial collapsed state
-    new Setting(sectionEl)
+    new Setting(sectionBodyEl)
       .setName('Initially Collapsed')
       .setDesc('Start with this section collapsed')
       .addToggle(toggle => {
@@ -242,11 +291,11 @@ export class ParentFieldConfigForm {
 
     // Section-specific settings
     if (sectionKey === 'ancestors' || sectionKey === 'descendants') {
-      this.renderTreeSectionSettings(sectionEl, config);
+      this.renderTreeSectionSettings(sectionBodyEl, config);
     } else if (sectionKey === 'roots') {
-      this.renderRootsSectionSettings(sectionEl, config);
+      this.renderRootsSectionSettings(sectionBodyEl, config);
     } else if (sectionKey === 'siblings') {
-      this.renderSiblingSectionSettings(sectionEl, config);
+      this.renderSiblingSectionSettings(sectionBodyEl, config);
     }
   }
 
@@ -367,11 +416,11 @@ export class ParentFieldConfigForm {
 
     if (bodyEl && icon) {
       if (this.collapsed) {
-        bodyEl.style.display = 'none';
-        icon.setText('▶');
+        bodyEl.addClass('is-collapsed');
+        setIcon(icon, 'chevron-right');
       } else {
-        bodyEl.style.display = 'block';
-        icon.setText('▼');
+        bodyEl.removeClass('is-collapsed');
+        setIcon(icon, 'chevron-down');
       }
     }
 
@@ -382,6 +431,18 @@ export class ParentFieldConfigForm {
   }
 
   /**
+   * Toggles collapse state of a section (Roots, Ancestors, etc.).
+   */
+  private toggleSectionCollapse(sectionKey: string): void {
+    // Toggle state
+    const currentState = this.sectionCollapsedStates.get(sectionKey) ?? true;
+    this.sectionCollapsedStates.set(sectionKey, !currentState);
+
+    // Re-render to reflect changes
+    this.refresh();
+  }
+
+  /**
    * Updates the title to reflect current field name.
    */
   private updateTitle(): void {
@@ -389,7 +450,7 @@ export class ParentFieldConfigForm {
 
     const titleEl = this.formEl.querySelector('.config-title');
     if (titleEl) {
-      titleEl.setText(`Field: "${this.config.name}"`);
+      titleEl.setText(this.config.name);
     }
   }
 
@@ -399,30 +460,31 @@ export class ParentFieldConfigForm {
   private renderReferenceSection(containerEl: HTMLElement, orderIndex: number): void {
     const sectionEl = containerEl.createDiv('section-config');
 
-    // Section header with reorder controls
-    const headerEl = sectionEl.createDiv('section-header');
-    headerEl.style.display = 'flex';
-    headerEl.style.alignItems = 'center';
-    headerEl.style.justifyContent = 'space-between';
+    // Track collapsed state for this section (default to collapsed for cleaner UI)
+    const sectionCollapsed = this.sectionCollapsedStates.get('reference') ?? true;
+
+    // Section header with collapse toggle and reorder controls
+    const headerEl = sectionEl.createDiv('section-config-header');
+    headerEl.style.cursor = 'pointer';
+
+    // Collapse icon
+    const collapseIcon = headerEl.createSpan('section-config-collapse-icon');
+    setIcon(collapseIcon, sectionCollapsed ? 'chevron-right' : 'chevron-down');
 
     const titleEl = headerEl.createEl('h4', { text: 'Reference Note Section' });
-    titleEl.style.margin = '0';
-    titleEl.style.flex = '1';
 
     // Reorder buttons container
     const reorderContainer = headerEl.createDiv('section-reorder-buttons');
-    reorderContainer.style.display = 'flex';
-    reorderContainer.style.gap = '4px';
 
     // Up arrow
     const upBtn = reorderContainer.createEl('button', {
       text: '↑',
       cls: 'clickable-icon'
     });
-    upBtn.style.padding = '2px 8px';
     upBtn.disabled = orderIndex === 0;
     upBtn.onclick = (e) => {
       e.preventDefault();
+      e.stopPropagation();
       this.moveSectionUp(orderIndex);
     };
 
@@ -431,19 +493,30 @@ export class ParentFieldConfigForm {
       text: '↓',
       cls: 'clickable-icon'
     });
-    downBtn.style.padding = '2px 8px';
     downBtn.disabled = orderIndex === (this.config.sectionOrder?.length ?? 1) - 1;
     downBtn.onclick = (e) => {
       e.preventDefault();
+      e.stopPropagation();
       this.moveSectionDown(orderIndex);
     };
 
+    // Make header clickable to toggle
+    headerEl.addEventListener('click', (e) => {
+      // Don't toggle if clicking the reorder buttons
+      if (e.target === upBtn || e.target === downBtn) {
+        return;
+      }
+      this.toggleSectionCollapse('reference');
+    });
+
+    // Section body (collapsible)
+    const sectionBodyEl = sectionEl.createDiv('section-config-body');
+    if (sectionCollapsed) {
+      sectionBodyEl.addClass('is-collapsed');
+    }
+
     // Description
-    const descEl = sectionEl.createDiv('section-description');
-    descEl.style.padding = '12px';
-    descEl.style.backgroundColor = 'var(--background-secondary)';
-    descEl.style.borderRadius = '4px';
-    descEl.style.marginTop = '8px';
+    const descEl = sectionBodyEl.createDiv('section-description');
     descEl.setText('Displays the current file with a pin button. This section is always visible and cannot be hidden.');
   }
 

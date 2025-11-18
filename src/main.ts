@@ -1,4 +1,4 @@
-import { App, Plugin, PluginSettingTab, Setting, TFile, TAbstractFile, Notice, Modal } from 'obsidian';
+import { App, Plugin, PluginSettingTab, Setting, TFile, TAbstractFile, Notice, Modal, setIcon, MarkdownRenderer } from 'obsidian';
 import { RelationGraph } from './relation-graph';
 import { RelationshipEngine } from './relationship-engine';
 import { DiagnosticSeverity } from './graph-validator';
@@ -240,7 +240,10 @@ export default class ParentRelationPlugin extends Plugin {
    */
   refreshSidebarViews(): void {
     this.app.workspace.getLeavesOfType(VIEW_TYPE_RELATION_SIDEBAR).forEach(leaf => {
-      (leaf.view as RelationSidebarView).refresh();
+      const view = leaf.view;
+      if (view && typeof (view as any).refresh === 'function') {
+        (view as RelationSidebarView).refresh();
+      }
     });
   }
 
@@ -738,8 +741,11 @@ class ParentRelationSettingTab extends PluginSettingTab {
 
     containerEl.createEl('h2', { text: 'Parent Relation Explorer Settings' });
 
-    // Import/Export section
-    this.renderImportExport(containerEl);
+    // What's new section
+    this.renderWhatsNew(containerEl);
+
+    // Documentation and support
+    this.renderDocumentationAndSupport(containerEl);
 
     // Presets section
     this.renderPresets(containerEl);
@@ -747,37 +753,160 @@ class ParentRelationSettingTab extends PluginSettingTab {
     // Parent fields configuration
     this.renderParentFieldsConfig(containerEl);
 
+    // Import/Export section
+    this.renderImportExport(containerEl);
+
     // Global settings
     this.renderGlobalSettings(containerEl);
+  }
+
+  /**
+   * Adds Ko-fi logo SVG to button element
+   */
+  private addKofiLogo(buttonEl: HTMLElement): void {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('width', '22');
+    svg.setAttribute('height', '22');
+    svg.setAttribute('viewBox', '0 0 241 194');
+    svg.setAttribute('fill', 'none');
+    svg.style.cssText = 'flex-shrink: 0;';
+
+    // Ko-fi logo - all paths with original colors from the SVG
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+
+    const paths = [
+      // Background layer 1 (white)
+      { d: 'M96.1344 193.911C61.1312 193.911 32.6597 178.256 15.9721 149.829C1.19788 124.912 -0.00585938 97.9229 -0.00585938 67.7662C-0.00585938 49.8876 5.37293 34.3215 15.5413 22.7466C24.8861 12.1157 38.1271 5.22907 52.8317 3.35378C70.2858 1.14271 91.9848 0.958984 114.545 0.958984C151.259 0.958984 161.63 1.4088 176.075 2.85328C195.29 4.76026 211.458 11.932 222.824 23.5955C234.368 35.4428 240.469 51.2624 240.469 69.3627V72.9994C240.469 103.885 219.821 129.733 191.046 136.759C188.898 141.827 186.237 146.871 183.089 151.837L183.006 151.964C172.869 167.632 149.042 193.918 103.401 193.918H96.1281L96.1344 193.911Z', fill: 'white' },
+      // Background layer 2 (white)
+      { d: 'M174.568 17.9772C160.927 16.6151 151.38 16.1589 114.552 16.1589C90.908 16.1589 70.9008 16.387 54.7644 18.4334C33.3949 21.164 15.2058 37.5285 15.2058 67.7674C15.2058 98.0066 16.796 121.422 29.0741 142.107C42.9425 165.751 66.1302 178.707 96.1412 178.707H103.414C140.242 178.707 160.25 159.156 170.253 143.698C174.574 136.874 177.754 130.058 179.801 123.234C205.947 120.96 225.27 99.3624 225.27 72.9941V69.3577C225.27 40.9432 206.631 21.164 174.574 17.9772H174.568Z', fill: 'white' },
+      // Cup outline (dark)
+      { d: 'M15.1975 67.7674C15.1975 37.5285 33.3866 21.164 54.7559 18.4334C70.8987 16.387 90.906 16.1589 114.544 16.1589C151.372 16.1589 160.919 16.6151 174.559 17.9772C206.617 21.1576 225.255 40.937 225.255 69.3577V72.9941C225.255 99.3687 205.932 120.966 179.786 123.234C177.74 130.058 174.559 136.874 170.238 143.698C160.235 159.156 140.228 178.707 103.4 178.707H96.1264C66.1155 178.707 42.9277 165.751 29.0595 142.107C16.7814 121.422 15.1912 98.4563 15.1912 67.7674', fill: '#202020' },
+      // Cup inner (white)
+      { d: 'M32.2469 67.9899C32.2469 97.3168 34.0654 116.184 43.6127 133.689C54.5225 153.924 74.3018 161.653 96.8117 161.653H103.857C133.411 161.653 147.736 147.329 155.693 134.829C159.558 128.462 162.966 121.417 164.784 112.547L166.147 106.864H174.332C192.521 106.864 208.208 92.09 208.208 73.2166V69.8082C208.208 48.6669 195.024 37.5228 172.058 34.7987C159.102 33.6646 151.372 33.2084 114.538 33.2084C89.7602 33.2084 72.0272 33.4364 58.6152 35.4828C39.7483 38.2134 32.2407 48.8951 32.2407 67.9899', fill: 'white' },
+      // Cup handle detail (dark)
+      { d: 'M166.158 83.6801C166.158 86.4107 168.204 88.4572 171.841 88.4572C183.435 88.4572 189.802 81.8619 189.802 70.9523C189.802 60.0427 183.435 53.2195 171.841 53.2195C168.204 53.2195 166.158 55.2657 166.158 57.9963V83.6866V83.6801Z', fill: '#202020' },
+      // Heart (Ko-fi orange)
+      { d: 'M54.5321 82.3198C54.5321 95.732 62.0332 107.326 71.5807 116.424C77.9478 122.562 87.9515 128.93 94.7685 133.022C96.8147 134.157 98.8611 134.841 101.136 134.841C103.866 134.841 106.134 134.157 107.959 133.022C114.782 128.93 124.779 122.562 130.919 116.424C140.694 107.332 148.195 95.7383 148.195 82.3198C148.195 67.7673 137.286 54.8115 121.599 54.8115C112.28 54.8115 105.912 59.5882 101.136 66.1772C96.8147 59.582 90.2259 54.8115 80.9001 54.8115C64.9855 54.8115 54.5256 67.7673 54.5256 82.3198', fill: '#FF5A16' }
+    ];
+
+    paths.forEach(pathData => {
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('d', pathData.d);
+      path.setAttribute('fill', pathData.fill);
+      g.appendChild(path);
+    });
+
+    svg.appendChild(g);
+    buttonEl.prepend(svg);
+  }
+
+  /**
+   * Renders what's new section with changelog.
+   */
+  private renderWhatsNew(containerEl: HTMLElement): void {
+    new Setting(containerEl)
+      .setName(`What's new in Relation Explorer v${this.plugin.manifest.version}`)
+      .setDesc('See the latest features and improvements')
+      .addButton(button => {
+        button
+          .setButtonText('View changelog')
+          .onClick(async () => {
+            const modal = new ChangelogModal(this.app);
+            modal.open();
+          });
+      });
+
+    new Setting(containerEl)
+      .setName('Documentation')
+      .setDesc('Learn more about using Relation Explorer')
+      .addButton(button => {
+        button
+          .setButtonText('View documentation')
+          .onClick(() => {
+            window.open('https://fkloosterman.github.io/relations-obsidian/', '_blank');
+          });
+      });
+  }
+
+  /**
+   * Renders support development section.
+   */
+  private renderDocumentationAndSupport(containerEl: HTMLElement): void {
+    new Setting(containerEl)
+      .setName('Support development')
+      .setHeading();
+
+    new Setting(containerEl)
+      .setDesc('If you find Relation Explorer helpful, please consider supporting its development.')
+      .addButton(button => {
+        const btn = button.buttonEl;
+        setIcon(btn, 'heart');
+        btn.createSpan({ text: ' Sponsor' });
+        btn.addClass('sponsor-button');
+        button.onClick(() => {
+          window.open('https://github.com/sponsors/fkloosterman', '_blank');
+        });
+      })
+      .addButton(button => {
+        const btn = button.buttonEl;
+        this.addKofiLogo(btn);
+        btn.createSpan({ text: ' Buy me a coffee' });
+        btn.addClass('kofi-button');
+        button.onClick(() => {
+          window.open('https://ko-fi.com/fabiankloosterman', '_blank');
+        });
+      });
   }
 
   /**
    * Renders import/export section.
    */
   private renderImportExport(containerEl: HTMLElement): void {
-    const section = containerEl.createDiv('settings-section');
-    section.createEl('h3', { text: 'Configuration Import/Export' });
+    // Section heading using Obsidian's pattern
+    new Setting(containerEl)
+      .setName('Configuration')
+      .setHeading();
 
-    new Setting(section)
-      .setName('Export Configuration')
-      .setDesc('Copy configuration to clipboard as JSON')
+    new Setting(containerEl)
+      .setName('Export configuration')
+      .setDesc('Save or copy configuration as JSON')
       .addButton(button => {
         button
-          .setButtonText('Export')
+          .setButtonText('Copy to clipboard')
           .setCta()
           .onClick(async () => {
             const json = JSON.stringify(this.plugin.settings, null, 2);
             await navigator.clipboard.writeText(json);
-            new Notice('Configuration exported to clipboard');
+            new Notice('Configuration copied to clipboard');
+          });
+      })
+      .addButton(button => {
+        button
+          .setButtonText('Save to file')
+          .onClick(async () => {
+            try {
+              const json = JSON.stringify(this.plugin.settings, null, 2);
+              const blob = new Blob([json], { type: 'application/json' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = 'relation-explorer-config.json';
+              a.click();
+              URL.revokeObjectURL(url);
+              // Note: Browser will show download UI, so we don't need a notice
+            } catch (e) {
+              new Notice('Failed to save file: ' + (e as Error).message, 5000);
+            }
           });
       });
 
-    new Setting(section)
-      .setName('Import Configuration')
-      .setDesc('Paste and import a JSON configuration')
+    new Setting(containerEl)
+      .setName('Import configuration')
+      .setDesc('Load configuration from clipboard or file')
       .addButton(button => {
         button
-          .setButtonText('Import')
+          .setButtonText('Paste from clipboard')
+          .setCta()
           .onClick(async () => {
             try {
               const json = await navigator.clipboard.readText();
@@ -796,6 +925,37 @@ class ParentRelationSettingTab extends PluginSettingTab {
               new Notice('Failed to parse JSON: ' + (e as Error).message, 5000);
             }
           });
+      })
+      .addButton(button => {
+        button
+          .setButtonText('Load from file')
+          .onClick(() => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = async (e: Event) => {
+              try {
+                const file = (e.target as HTMLInputElement).files?.[0];
+                if (!file) return;
+
+                const text = await file.text();
+                const imported = JSON.parse(text);
+
+                if (validateSettings(imported)) {
+                  this.plugin.settings = imported;
+                  await this.plugin.saveSettings();
+                  await this.rebuildGraphsAndEngines();
+                  this.display(); // Refresh UI
+                  new Notice('Configuration imported from file');
+                } else {
+                  new Notice('Invalid configuration format', 5000);
+                }
+              } catch (e) {
+                new Notice('Failed to load file: ' + (e as Error).message, 5000);
+              }
+            };
+            input.click();
+          });
       });
   }
 
@@ -803,14 +963,15 @@ class ParentRelationSettingTab extends PluginSettingTab {
    * Renders preset configurations section.
    */
   private renderPresets(containerEl: HTMLElement): void {
-    const section = containerEl.createDiv('settings-section');
-    section.createEl('h3', { text: 'Configuration Presets' });
+    new Setting(containerEl)
+      .setName('Presets')
+      .setHeading();
 
     const presetMetadata = getPresetMetadata();
 
-    new Setting(section)
-      .setName('Load Preset')
-      .setDesc('Load a predefined configuration template')
+    new Setting(containerEl)
+      .setName('Add preset')
+      .setDesc('Add parent fields from a predefined configuration template')
       .addDropdown(dropdown => {
         dropdown.addOption('', 'Select a preset...');
         presetMetadata.forEach(({ name, description }) => {
@@ -821,15 +982,36 @@ class ParentRelationSettingTab extends PluginSettingTab {
 
           const preset = getPreset(value);
           if (preset) {
-            const confirmed = await this.confirmLoadPreset(value);
-            if (confirmed) {
-              this.plugin.settings.parentFields = preset;
-              this.plugin.settings.defaultParentField = preset[0].name;
-              await this.plugin.saveSettings();
-              await this.rebuildGraphsAndEngines();
-              this.display();
-              new Notice(`Loaded preset: ${value}`);
-            }
+            // Add each config from preset, making names unique if needed
+            const existingNames = new Set(this.plugin.settings.parentFields.map(f => f.name));
+            let addedCount = 0;
+
+            preset.forEach(config => {
+              const newConfig = JSON.parse(JSON.stringify(config)) as ParentFieldConfig;
+
+              // Make name unique if it conflicts
+              let uniqueName = newConfig.name;
+              let counter = 1;
+              while (existingNames.has(uniqueName)) {
+                uniqueName = `${newConfig.name}-${counter}`;
+                counter++;
+              }
+
+              if (uniqueName !== newConfig.name) {
+                newConfig.name = uniqueName;
+                newConfig.displayName = `${config.displayName || config.name} ${counter - 1}`;
+              }
+
+              existingNames.add(uniqueName);
+              this.plugin.settings.parentFields.push(newConfig);
+              addedCount++;
+            });
+
+            await this.plugin.saveSettings();
+            await this.rebuildGraphsAndEngines();
+            this.display();
+            new Notice(`Added ${addedCount} parent field${addedCount > 1 ? 's' : ''} from preset: ${value}`);
+
             // Reset dropdown to placeholder
             dropdown.setValue('');
           }
@@ -838,68 +1020,42 @@ class ParentRelationSettingTab extends PluginSettingTab {
   }
 
   /**
-   * Confirms loading a preset (warns about overwriting).
-   */
-  private async confirmLoadPreset(presetName: string): Promise<boolean> {
-    return new Promise((resolve) => {
-      const modal = new Modal(this.app);
-      modal.titleEl.setText('Load Preset Configuration?');
-      modal.contentEl.createEl('p', {
-        text: `This will replace your current configuration with the "${presetName}" preset. This action cannot be undone unless you have exported your current configuration.`
-      });
-
-      const buttonContainer = modal.contentEl.createDiv('modal-button-container');
-
-      const cancelBtn = buttonContainer.createEl('button', { text: 'Cancel' });
-      cancelBtn.onclick = () => {
-        modal.close();
-        resolve(false);
-      };
-
-      const confirmBtn = buttonContainer.createEl('button', {
-        text: 'Load Preset',
-        cls: 'mod-cta'
-      });
-      confirmBtn.onclick = () => {
-        modal.close();
-        resolve(true);
-      };
-
-      modal.open();
-    });
-  }
-
-  /**
    * Renders parent fields configuration section.
    */
   private renderParentFieldsConfig(containerEl: HTMLElement): void {
-    const section = containerEl.createDiv('settings-section');
-    section.createEl('h3', { text: 'Parent Fields' });
+    new Setting(containerEl)
+      .setName('Parent fields')
+      .setHeading();
 
     // Add field button
-    new Setting(section)
+    new Setting(containerEl)
+      .setName('Add parent field')
       .setDesc('Configure parent fields with custom display names, visibility, and behavior')
       .addButton(button => {
-        button
-          .setButtonText('+ Add Parent Field')
-          .setCta()
-          .onClick(() => {
-            this.addParentField();
-          });
+        const btn = button.buttonEl;
+        setIcon(btn, 'plus');
+        btn.createSpan({ text: ' Add field' });
+        button.setCta();
+        button.onClick(() => {
+          this.addParentField();
+        });
       });
 
     // Render each field configuration
-    const fieldsContainer = section.createDiv('parent-fields-container');
+    const fieldsContainer = containerEl.createDiv('parent-fields-container');
 
     this.plugin.settings.parentFields.forEach((config, index) => {
       const formContainer = fieldsContainer.createDiv();
       const initialCollapsed = this.fieldCollapsedStates.get(config.name) ?? true;
+      const isDefault = this.plugin.settings.defaultParentField === config.name;
       const form = new ParentFieldConfigForm(
         formContainer,
         config,
         (updated) => this.updateFieldConfig(index, updated),
         () => this.removeFieldConfig(index),
         () => this.duplicateFieldConfig(index),
+        isDefault,
+        () => this.setDefaultField(config.name),
         initialCollapsed,
         (collapsed) => this.fieldCollapsedStates.set(config.name, collapsed)
       );
@@ -912,40 +1068,12 @@ class ParentRelationSettingTab extends PluginSettingTab {
    * Renders global settings section.
    */
   private renderGlobalSettings(containerEl: HTMLElement): void {
-    const section = containerEl.createDiv('settings-section');
-    section.createEl('h3', { text: 'Global Settings' });
+    new Setting(containerEl)
+      .setName('General')
+      .setHeading();
 
-    new Setting(section)
-      .setName('Default Parent Field')
-      .setDesc('Which field to show by default when opening sidebar')
-      .addDropdown(dropdown => {
-        this.plugin.settings.parentFields.forEach(field => {
-          dropdown.addOption(field.name, field.displayName || field.name);
-        });
-        dropdown.setValue(this.plugin.settings.defaultParentField);
-        dropdown.onChange(async (value) => {
-          this.plugin.settings.defaultParentField = value;
-          await this.plugin.saveSettings();
-        });
-      });
-
-    new Setting(section)
-      .setName('UI Style')
-      .setDesc('Parent field selector style (auto adapts based on count)')
-      .addDropdown(dropdown => {
-        dropdown.addOption('auto', 'Auto (≤4: segmented, >4: dropdown)');
-        dropdown.addOption('segmented', 'Always Segmented Control');
-        dropdown.addOption('dropdown', 'Always Dropdown');
-        dropdown.setValue(this.plugin.settings.uiStyle);
-        dropdown.onChange(async (value) => {
-          this.plugin.settings.uiStyle = value as 'auto' | 'segmented' | 'dropdown';
-          await this.plugin.saveSettings();
-          this.plugin.refreshSidebarViews();
-        });
-      });
-
-    new Setting(section)
-      .setName('Diagnostic Mode')
+    new Setting(containerEl)
+      .setName('Diagnostic mode')
       .setDesc('Show diagnostic information in console')
       .addToggle(toggle => {
         toggle.setValue(this.plugin.settings.diagnosticMode);
@@ -1037,6 +1165,15 @@ class ParentRelationSettingTab extends PluginSettingTab {
   }
 
   /**
+   * Sets a field as the default parent field.
+   */
+  private async setDefaultField(fieldName: string): Promise<void> {
+    this.plugin.settings.defaultParentField = fieldName;
+    await this.plugin.saveSettings();
+    this.display(); // Refresh UI to update star icons
+  }
+
+  /**
    * Rebuilds all graphs and engines after configuration changes.
    */
   private async rebuildGraphsAndEngines(): Promise<void> {
@@ -1063,5 +1200,183 @@ class ParentRelationSettingTab extends PluginSettingTab {
 
     // Refresh sidebar
     this.plugin.refreshSidebarViews();
+  }
+}
+
+/**
+ * Modal for displaying changelog content.
+ */
+class ChangelogModal extends Modal {
+  constructor(app: App) {
+    super(app);
+  }
+
+  /**
+   * Adds Ko-fi logo SVG to button element
+   */
+  private addKofiLogo(buttonEl: HTMLElement): void {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('width', '22');
+    svg.setAttribute('height', '22');
+    svg.setAttribute('viewBox', '0 0 241 194');
+    svg.setAttribute('fill', 'none');
+    svg.style.cssText = 'flex-shrink: 0;';
+
+    // Ko-fi logo - all paths with original colors from the SVG
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+
+    const paths = [
+      // Background layer 1 (white)
+      { d: 'M96.1344 193.911C61.1312 193.911 32.6597 178.256 15.9721 149.829C1.19788 124.912 -0.00585938 97.9229 -0.00585938 67.7662C-0.00585938 49.8876 5.37293 34.3215 15.5413 22.7466C24.8861 12.1157 38.1271 5.22907 52.8317 3.35378C70.2858 1.14271 91.9848 0.958984 114.545 0.958984C151.259 0.958984 161.63 1.4088 176.075 2.85328C195.29 4.76026 211.458 11.932 222.824 23.5955C234.368 35.4428 240.469 51.2624 240.469 69.3627V72.9994C240.469 103.885 219.821 129.733 191.046 136.759C188.898 141.827 186.237 146.871 183.089 151.837L183.006 151.964C172.869 167.632 149.042 193.918 103.401 193.918H96.1281L96.1344 193.911Z', fill: 'white' },
+      // Background layer 2 (white)
+      { d: 'M174.568 17.9772C160.927 16.6151 151.38 16.1589 114.552 16.1589C90.908 16.1589 70.9008 16.387 54.7644 18.4334C33.3949 21.164 15.2058 37.5285 15.2058 67.7674C15.2058 98.0066 16.796 121.422 29.0741 142.107C42.9425 165.751 66.1302 178.707 96.1412 178.707H103.414C140.242 178.707 160.25 159.156 170.253 143.698C174.574 136.874 177.754 130.058 179.801 123.234C205.947 120.96 225.27 99.3624 225.27 72.9941V69.3577C225.27 40.9432 206.631 21.164 174.574 17.9772H174.568Z', fill: 'white' },
+      // Cup outline (dark)
+      { d: 'M15.1975 67.7674C15.1975 37.5285 33.3866 21.164 54.7559 18.4334C70.8987 16.387 90.906 16.1589 114.544 16.1589C151.372 16.1589 160.919 16.6151 174.559 17.9772C206.617 21.1576 225.255 40.937 225.255 69.3577V72.9941C225.255 99.3687 205.932 120.966 179.786 123.234C177.74 130.058 174.559 136.874 170.238 143.698C160.235 159.156 140.228 178.707 103.4 178.707H96.1264C66.1155 178.707 42.9277 165.751 29.0595 142.107C16.7814 121.422 15.1912 98.4563 15.1912 67.7674', fill: '#202020' },
+      // Cup inner (white)
+      { d: 'M32.2469 67.9899C32.2469 97.3168 34.0654 116.184 43.6127 133.689C54.5225 153.924 74.3018 161.653 96.8117 161.653H103.857C133.411 161.653 147.736 147.329 155.693 134.829C159.558 128.462 162.966 121.417 164.784 112.547L166.147 106.864H174.332C192.521 106.864 208.208 92.09 208.208 73.2166V69.8082C208.208 48.6669 195.024 37.5228 172.058 34.7987C159.102 33.6646 151.372 33.2084 114.538 33.2084C89.7602 33.2084 72.0272 33.4364 58.6152 35.4828C39.7483 38.2134 32.2407 48.8951 32.2407 67.9899', fill: 'white' },
+      // Cup handle detail (dark)
+      { d: 'M166.158 83.6801C166.158 86.4107 168.204 88.4572 171.841 88.4572C183.435 88.4572 189.802 81.8619 189.802 70.9523C189.802 60.0427 183.435 53.2195 171.841 53.2195C168.204 53.2195 166.158 55.2657 166.158 57.9963V83.6866V83.6801Z', fill: '#202020' },
+      // Heart (Ko-fi orange)
+      { d: 'M54.5321 82.3198C54.5321 95.732 62.0332 107.326 71.5807 116.424C77.9478 122.562 87.9515 128.93 94.7685 133.022C96.8147 134.157 98.8611 134.841 101.136 134.841C103.866 134.841 106.134 134.157 107.959 133.022C114.782 128.93 124.779 122.562 130.919 116.424C140.694 107.332 148.195 95.7383 148.195 82.3198C148.195 67.7673 137.286 54.8115 121.599 54.8115C112.28 54.8115 105.912 59.5882 101.136 66.1772C96.8147 59.582 90.2259 54.8115 80.9001 54.8115C64.9855 54.8115 54.5256 67.7673 54.5256 82.3198', fill: '#FF5A16' }
+    ];
+
+    paths.forEach(pathData => {
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('d', pathData.d);
+      path.setAttribute('fill', pathData.fill);
+      g.appendChild(path);
+    });
+
+    svg.appendChild(g);
+    buttonEl.prepend(svg);
+  }
+
+  onOpen(): void {
+    const { contentEl, titleEl } = this;
+
+    titleEl.setText('What\'s New in Relation Explorer');
+
+    // Load and display changelog
+    this.loadChangelog();
+
+    // Footer with support links
+    const footer = contentEl.createDiv('changelog-footer');
+
+    footer.createEl('p', {
+      text: 'If you find Relation Explorer helpful, please consider supporting its development.'
+    });
+
+    const buttonContainer = footer.createDiv('changelog-footer-buttons');
+
+    const kofiBtn = buttonContainer.createEl('button', {
+      cls: 'kofi-button'
+    });
+    this.addKofiLogo(kofiBtn);
+    kofiBtn.createSpan({ text: ' Buy me a coffee' });
+    kofiBtn.onclick = () => {
+      window.open('https://ko-fi.com/fabiankloosterman', '_blank');
+    };
+
+    const thanksBtn = buttonContainer.createEl('button', {
+      text: 'Thanks!'
+    });
+    thanksBtn.onclick = () => {
+      this.close();
+    };
+  }
+
+  private async loadChangelog(): Promise<void> {
+    const { contentEl } = this;
+
+    // Create changelog container - styled via CSS
+    const changelogDiv = contentEl.createDiv('changelog-content');
+
+    try {
+      // Try to load CHANGELOG.md from plugin directory
+      let changelogContent: string;
+
+      try {
+        // Use vault adapter to read the file
+        const adapter = this.app.vault.adapter;
+        const manifestDir = (this.app.vault as any).configDir;
+        const pluginId = 'relations-obsidian';
+        const changelogPath = `${manifestDir}/plugins/${pluginId}/CHANGELOG.md`;
+
+        console.log('Attempting to load CHANGELOG from:', changelogPath);
+
+        if (adapter && typeof (adapter as any).read === 'function') {
+          changelogContent = await (adapter as any).read(changelogPath);
+          console.log('Successfully loaded CHANGELOG, length:', changelogContent.length);
+        } else {
+          console.log('Adapter read not available, using fallback');
+          changelogContent = this.getFallbackChangelog();
+        }
+      } catch (e) {
+        console.log('Could not load CHANGELOG.md, using fallback', e);
+        changelogContent = this.getFallbackChangelog();
+      }
+
+      // Render the markdown content
+      await this.renderMarkdown(changelogContent, changelogDiv);
+
+    } catch (e) {
+      console.error('Failed to render changelog:', e);
+      changelogDiv.empty();
+      changelogDiv.createEl('p', {
+        text: 'Unable to load changelog. Please visit the GitHub repository for the latest updates.',
+        cls: 'setting-item-description'
+      });
+    }
+  }
+
+  private async renderMarkdown(markdown: string, container: HTMLElement): Promise<void> {
+    try {
+      console.log('Rendering markdown, length:', markdown.length);
+
+      // Use Obsidian's markdown renderer - use type assertion for modal context
+      await MarkdownRenderer.renderMarkdown(
+        markdown,
+        container,
+        '', // sourcePath
+        this as any // Modal works as Component context
+      );
+
+      console.log('Markdown rendered successfully');
+    } catch (e) {
+      console.error('Error rendering markdown:', e);
+      // Fallback: display as preformatted text
+      const pre = container.createEl('pre');
+      pre.style.whiteSpace = 'pre-wrap';
+      pre.style.wordWrap = 'break-word';
+      pre.setText(markdown);
+    }
+  }
+
+  private getFallbackChangelog(): string {
+    return `# Recent Updates
+
+## UI and Styling Modernization
+- Complete migration to Obsidian's design system
+- Enhanced Settings tab with native patterns
+- Collapsible subsections in parent field configuration
+- Replaced text arrows with proper Obsidian icons
+
+## Navigation Commands
+- Added basic and advanced navigation commands
+- Interactive modals for note selection
+- Multi-field support for all commands
+
+## Codeblock Features
+- Advanced filtering and display options
+- Title display with multiple modes
+- List rendering for siblings and cousins
+
+For the complete changelog, visit: https://github.com/fkloosterman/relations-obsidian/blob/main/CHANGELOG.md
+`;
+  }
+
+  onClose(): void {
+    const { contentEl } = this;
+    contentEl.empty();
   }
 }

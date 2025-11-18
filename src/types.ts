@@ -179,8 +179,8 @@ export interface ParentRelationSettings {
   /** Which parent field to show by default when opening sidebar */
   defaultParentField: string;
 
-  /** UI style preference: 'auto', 'segmented', or 'dropdown' */
-  uiStyle: 'auto' | 'segmented' | 'dropdown';
+  /** UI style preference (deprecated, always uses dropdown now) */
+  uiStyle?: 'auto' | 'segmented' | 'dropdown';
 
   /** Diagnostic mode toggle */
   diagnosticMode: boolean;
@@ -239,7 +239,6 @@ export const DEFAULT_PARENT_FIELD_CONFIG: ParentFieldConfig = {
 export const DEFAULT_SETTINGS: ParentRelationSettings = {
   parentFields: [DEFAULT_PARENT_FIELD_CONFIG],
   defaultParentField: 'parent',
-  uiStyle: 'auto',
   diagnosticMode: false
 };
 

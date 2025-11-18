@@ -1261,25 +1261,12 @@ class ChangelogModal extends Modal {
 
     // Footer with support links
     const footer = contentEl.createDiv('changelog-footer');
-    footer.style.cssText = `
-      margin-top: 2em;
-      padding-top: 1em;
-      border-top: 1px solid var(--background-modifier-border);
-      text-align: center;
-    `;
 
-    const supportText = footer.createEl('p', {
+    footer.createEl('p', {
       text: 'If you find Relation Explorer helpful, please consider supporting its development.'
     });
-    supportText.style.marginBottom = '1em';
 
-    const buttonContainer = footer.createDiv();
-    buttonContainer.style.cssText = `
-      display: flex;
-      gap: var(--size-4-2);
-      justify-content: center;
-      align-items: center;
-    `;
+    const buttonContainer = footer.createDiv('changelog-footer-buttons');
 
     const kofiBtn = buttonContainer.createEl('button', {
       cls: 'kofi-button'
@@ -1301,13 +1288,8 @@ class ChangelogModal extends Modal {
   private async loadChangelog(): Promise<void> {
     const { contentEl } = this;
 
-    // Create changelog container first
+    // Create changelog container - styled via CSS
     const changelogDiv = contentEl.createDiv('changelog-content');
-    changelogDiv.style.cssText = `
-      max-height: 60vh;
-      overflow-y: auto;
-      padding: var(--size-4-3);
-    `;
 
     try {
       // Try to load CHANGELOG.md from plugin directory

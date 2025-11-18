@@ -7,6 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - UI and Styling Modernization
+
+#### Obsidian Design System Integration
+- **CSS Variables Migration**: Complete migration to Obsidian's native CSS variables
+  - Replaced all hardcoded pixel values with `--size-*`, `--radius-*`, and `--icon-size-*` variables
+  - Adopted Obsidian's spacing and sizing system throughout plugin
+  - Removed custom scrollbar styling in favor of Obsidian defaults
+- **Icon Enhancements**: Replaced text-based arrows (`▶ ▼`) with proper Obsidian chevron icons
+  - Used `setIcon()` API for consistent icon rendering
+  - Applied to sidebar section toggles and parent field config collapse icons
+  - Proper SVG sizing with Obsidian's icon variables
+
+#### Settings Tab Modernization
+- **Native Obsidian Patterns**: Adopted Obsidian's `.setHeading()` pattern for section headers
+- **Sentence Case Labels**: Converted all setting labels to sentence case for consistency
+- **Section Reordering**: Organized settings into logical order (Presets, Parent fields, Configuration, General)
+- **Simplified UI**: Removed custom segmented control in favor of dropdown-only approach
+  - Eliminated ~150 lines of custom UI code
+  - More familiar interface for Obsidian users
+
+#### Parent Field Configuration Improvements
+- **Collapsible Subsections**: Made Roots, Ancestors, Descendants, Siblings, and Reference sections collapsible
+  - Sections default to collapsed state for cleaner initial UI
+  - Chevron icons indicate collapse/expand state
+  - Click section header to toggle visibility
+- **Visual Refinements**: Enhanced parent field config appearance
+  - Lightened header backgrounds (removed dark backgrounds)
+  - Added subtle borders with hover effects
+  - Card-like appearance for each configuration section
+  - Reduced padding for more compact layout
+- **Removed Inline Styles**: Migrated all inline JavaScript styles to CSS classes
+  - Pin button styling
+  - Reference note section styling
+  - Section collapse functionality
+  - Tree renderer styles
+
+#### Technical Improvements
+- Better maintainability through CSS-first approach
+- Consistent visual language with native Obsidian
+- Improved theme compatibility
+- Reduced code complexity
+
 ### Added - Milestone 6.1: Basic Navigation Commands
 
 #### Quick Navigation

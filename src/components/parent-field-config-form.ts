@@ -22,6 +22,8 @@ export class ParentFieldConfigForm {
   private onChange: (config: ParentFieldConfig) => void;
   private onRemove: () => void;
   private onDuplicate: () => void;
+  private onSetDefault: () => void;
+  private isDefault: boolean;
   private onCollapsedChange?: (collapsed: boolean) => void;
   private collapsed: boolean = true;
   private formEl: HTMLElement | null = null;
@@ -33,6 +35,8 @@ export class ParentFieldConfigForm {
     onChange: (config: ParentFieldConfig) => void,
     onRemove: () => void,
     onDuplicate: () => void,
+    isDefault: boolean,
+    onSetDefault: () => void,
     initialCollapsed: boolean = true,
     onCollapsedChange?: (collapsed: boolean) => void
   ) {
@@ -41,6 +45,8 @@ export class ParentFieldConfigForm {
     this.onChange = onChange;
     this.onRemove = onRemove;
     this.onDuplicate = onDuplicate;
+    this.isDefault = isDefault;
+    this.onSetDefault = onSetDefault;
     this.collapsed = initialCollapsed;
     this.onCollapsedChange = onCollapsedChange;
   }
@@ -103,13 +109,37 @@ export class ParentFieldConfigForm {
     const titleEl = headerEl.createSpan('config-title');
     titleEl.setText(`Field: "${this.config.name}"`);
 
+    // Default star icon
+    const starIcon = headerEl.createSpan('default-star-icon');
+    starIcon.setAttribute('aria-label', this.isDefault ? 'Default parent field' : 'Set as default parent field');
+    setIcon(starIcon, this.isDefault ? 'star' : 'star');
+    if (this.isDefault) {
+      starIcon.addClass('is-default');
+    }
+    starIcon.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (!this.isDefault) {
+        this.onSetDefault();
+      }
+    });
+
     // Remove button
     const removeBtn = headerEl.createEl('button', {
       text: 'Remove',
       cls: 'mod-warning'
     });
+
+    // Gray out and disable if this is the default field
+    if (this.isDefault) {
+      removeBtn.disabled = true;
+      removeBtn.addClass('is-disabled');
+      removeBtn.setAttribute('aria-label', 'Cannot remove default parent field');
+    }
+
     removeBtn.onclick = () => {
-      this.onRemove();
+      if (!this.isDefault) {
+        this.onRemove();
+      }
     };
 
     headerEl.onclick = (e) => {

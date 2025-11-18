@@ -240,7 +240,10 @@ export default class ParentRelationPlugin extends Plugin {
    */
   refreshSidebarViews(): void {
     this.app.workspace.getLeavesOfType(VIEW_TYPE_RELATION_SIDEBAR).forEach(leaf => {
-      (leaf.view as RelationSidebarView).refresh();
+      const view = leaf.view;
+      if (view && typeof (view as any).refresh === 'function') {
+        (view as RelationSidebarView).refresh();
+      }
     });
   }
 
@@ -738,8 +741,11 @@ class ParentRelationSettingTab extends PluginSettingTab {
 
     containerEl.createEl('h2', { text: 'Parent Relation Explorer Settings' });
 
-    // Import/Export section
-    this.renderImportExport(containerEl);
+    // What's new section
+    this.renderWhatsNew(containerEl);
+
+    // Documentation and support
+    this.renderDocumentationAndSupport(containerEl);
 
     // Presets section
     this.renderPresets(containerEl);
@@ -747,8 +753,66 @@ class ParentRelationSettingTab extends PluginSettingTab {
     // Parent fields configuration
     this.renderParentFieldsConfig(containerEl);
 
+    // Import/Export section
+    this.renderImportExport(containerEl);
+
     // Global settings
     this.renderGlobalSettings(containerEl);
+  }
+
+  /**
+   * Renders what's new section with changelog.
+   */
+  private renderWhatsNew(containerEl: HTMLElement): void {
+    new Setting(containerEl)
+      .setName(`What's new in Relation Explorer v${this.plugin.manifest.version}`)
+      .setDesc('See the latest features and improvements')
+      .addButton(button => {
+        button
+          .setButtonText('View changelog')
+          .onClick(async () => {
+            const modal = new ChangelogModal(this.app);
+            modal.open();
+          });
+      });
+  }
+
+  /**
+   * Renders documentation and support section.
+   */
+  private renderDocumentationAndSupport(containerEl: HTMLElement): void {
+    new Setting(containerEl)
+      .setName('Support development')
+      .setHeading();
+
+    new Setting(containerEl)
+      .setDesc('If you find Relation Explorer helpful, please consider supporting its development.')
+      .addButton(button => {
+        button
+          .setButtonText('GitHub Sponsors')
+          .onClick(() => {
+            window.open('https://github.com/sponsors/fkloosterman', '_blank');
+          });
+      })
+      .addButton(button => {
+        button
+          .setButtonText('Ko-fi')
+          .setCta()
+          .onClick(() => {
+            window.open('https://ko-fi.com/fabiankloosterman', '_blank');
+          });
+      });
+
+    new Setting(containerEl)
+      .setName('Documentation')
+      .setDesc('Learn more about using Relation Explorer')
+      .addButton(button => {
+        button
+          .setButtonText('View documentation')
+          .onClick(() => {
+            window.open('https://fkloosterman.github.io/relations-obsidian/', '_blank');
+          });
+      });
   }
 
   /**
@@ -762,24 +826,43 @@ class ParentRelationSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName('Export configuration')
-      .setDesc('Copy configuration to clipboard as JSON')
+      .setDesc('Save or copy configuration as JSON')
       .addButton(button => {
         button
-          .setButtonText('Export')
-          .setCta()
+          .setButtonText('Copy to clipboard')
           .onClick(async () => {
             const json = JSON.stringify(this.plugin.settings, null, 2);
             await navigator.clipboard.writeText(json);
-            new Notice('Configuration exported to clipboard');
+            new Notice('Configuration copied to clipboard');
+          });
+      })
+      .addButton(button => {
+        button
+          .setButtonText('Save to file')
+          .setCta()
+          .onClick(async () => {
+            try {
+              const json = JSON.stringify(this.plugin.settings, null, 2);
+              const blob = new Blob([json], { type: 'application/json' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = 'relation-explorer-config.json';
+              a.click();
+              URL.revokeObjectURL(url);
+              new Notice('Configuration saved to file');
+            } catch (e) {
+              new Notice('Failed to save file: ' + (e as Error).message, 5000);
+            }
           });
       });
 
     new Setting(containerEl)
       .setName('Import configuration')
-      .setDesc('Paste and import a JSON configuration')
+      .setDesc('Load configuration from clipboard or file')
       .addButton(button => {
         button
-          .setButtonText('Import')
+          .setButtonText('Paste from clipboard')
           .onClick(async () => {
             try {
               const json = await navigator.clipboard.readText();
@@ -798,6 +881,37 @@ class ParentRelationSettingTab extends PluginSettingTab {
               new Notice('Failed to parse JSON: ' + (e as Error).message, 5000);
             }
           });
+      })
+      .addButton(button => {
+        button
+          .setButtonText('Load from file')
+          .onClick(() => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = async (e: Event) => {
+              try {
+                const file = (e.target as HTMLInputElement).files?.[0];
+                if (!file) return;
+
+                const text = await file.text();
+                const imported = JSON.parse(text);
+
+                if (validateSettings(imported)) {
+                  this.plugin.settings = imported;
+                  await this.plugin.saveSettings();
+                  await this.rebuildGraphsAndEngines();
+                  this.display(); // Refresh UI
+                  new Notice('Configuration imported from file');
+                } else {
+                  new Notice('Invalid configuration format', 5000);
+                }
+              } catch (e) {
+                new Notice('Failed to load file: ' + (e as Error).message, 5000);
+              }
+            };
+            input.click();
+          });
       });
   }
 
@@ -812,8 +926,8 @@ class ParentRelationSettingTab extends PluginSettingTab {
     const presetMetadata = getPresetMetadata();
 
     new Setting(containerEl)
-      .setName('Load preset')
-      .setDesc('Load a predefined configuration template')
+      .setName('Add preset')
+      .setDesc('Add parent fields from a predefined configuration template')
       .addDropdown(dropdown => {
         dropdown.addOption('', 'Select a preset...');
         presetMetadata.forEach(({ name, description }) => {
@@ -824,54 +938,41 @@ class ParentRelationSettingTab extends PluginSettingTab {
 
           const preset = getPreset(value);
           if (preset) {
-            const confirmed = await this.confirmLoadPreset(value);
-            if (confirmed) {
-              this.plugin.settings.parentFields = preset;
-              this.plugin.settings.defaultParentField = preset[0].name;
-              await this.plugin.saveSettings();
-              await this.rebuildGraphsAndEngines();
-              this.display();
-              new Notice(`Loaded preset: ${value}`);
-            }
+            // Add each config from preset, making names unique if needed
+            const existingNames = new Set(this.plugin.settings.parentFields.map(f => f.name));
+            let addedCount = 0;
+
+            preset.forEach(config => {
+              const newConfig = JSON.parse(JSON.stringify(config)) as ParentFieldConfig;
+
+              // Make name unique if it conflicts
+              let uniqueName = newConfig.name;
+              let counter = 1;
+              while (existingNames.has(uniqueName)) {
+                uniqueName = `${newConfig.name}-${counter}`;
+                counter++;
+              }
+
+              if (uniqueName !== newConfig.name) {
+                newConfig.name = uniqueName;
+                newConfig.displayName = `${config.displayName || config.name} ${counter - 1}`;
+              }
+
+              existingNames.add(uniqueName);
+              this.plugin.settings.parentFields.push(newConfig);
+              addedCount++;
+            });
+
+            await this.plugin.saveSettings();
+            await this.rebuildGraphsAndEngines();
+            this.display();
+            new Notice(`Added ${addedCount} parent field${addedCount > 1 ? 's' : ''} from preset: ${value}`);
+
             // Reset dropdown to placeholder
             dropdown.setValue('');
           }
         });
       });
-  }
-
-  /**
-   * Confirms loading a preset (warns about overwriting).
-   */
-  private async confirmLoadPreset(presetName: string): Promise<boolean> {
-    return new Promise((resolve) => {
-      const modal = new Modal(this.app);
-      modal.titleEl.setText('Load Preset Configuration?');
-      modal.contentEl.createEl('p', {
-        text: `This will replace your current configuration with the "${presetName}" preset. This action cannot be undone unless you have exported your current configuration.`
-      });
-
-      const buttonContainer = modal.contentEl.createDiv('modal-button-container');
-
-      const cancelBtn = buttonContainer.createEl('button', {
-        text: 'Cancel'
-      });
-      cancelBtn.onclick = () => {
-        modal.close();
-        resolve(false);
-      };
-
-      const confirmBtn = buttonContainer.createEl('button', {
-        text: 'Load Preset',
-        cls: 'mod-cta'
-      });
-      confirmBtn.onclick = () => {
-        modal.close();
-        resolve(true);
-      };
-
-      modal.open();
-    });
   }
 
   /**
@@ -901,12 +1002,15 @@ class ParentRelationSettingTab extends PluginSettingTab {
     this.plugin.settings.parentFields.forEach((config, index) => {
       const formContainer = fieldsContainer.createDiv();
       const initialCollapsed = this.fieldCollapsedStates.get(config.name) ?? true;
+      const isDefault = this.plugin.settings.defaultParentField === config.name;
       const form = new ParentFieldConfigForm(
         formContainer,
         config,
         (updated) => this.updateFieldConfig(index, updated),
         () => this.removeFieldConfig(index),
         () => this.duplicateFieldConfig(index),
+        isDefault,
+        () => this.setDefaultField(config.name),
         initialCollapsed,
         (collapsed) => this.fieldCollapsedStates.set(config.name, collapsed)
       );
@@ -922,20 +1026,6 @@ class ParentRelationSettingTab extends PluginSettingTab {
     new Setting(containerEl)
       .setName('General')
       .setHeading();
-
-    new Setting(containerEl)
-      .setName('Default parent field')
-      .setDesc('Which field to show by default when opening sidebar')
-      .addDropdown(dropdown => {
-        this.plugin.settings.parentFields.forEach(field => {
-          dropdown.addOption(field.name, field.displayName || field.name);
-        });
-        dropdown.setValue(this.plugin.settings.defaultParentField);
-        dropdown.onChange(async (value) => {
-          this.plugin.settings.defaultParentField = value;
-          await this.plugin.saveSettings();
-        });
-      });
 
     new Setting(containerEl)
       .setName('Diagnostic mode')
@@ -1030,6 +1120,15 @@ class ParentRelationSettingTab extends PluginSettingTab {
   }
 
   /**
+   * Sets a field as the default parent field.
+   */
+  private async setDefaultField(fieldName: string): Promise<void> {
+    this.plugin.settings.defaultParentField = fieldName;
+    await this.plugin.saveSettings();
+    this.display(); // Refresh UI to update star icons
+  }
+
+  /**
    * Rebuilds all graphs and engines after configuration changes.
    */
   private async rebuildGraphsAndEngines(): Promise<void> {
@@ -1056,5 +1155,139 @@ class ParentRelationSettingTab extends PluginSettingTab {
 
     // Refresh sidebar
     this.plugin.refreshSidebarViews();
+  }
+}
+
+/**
+ * Modal for displaying changelog content.
+ */
+class ChangelogModal extends Modal {
+  constructor(app: App) {
+    super(app);
+  }
+
+  onOpen(): void {
+    const { contentEl, titleEl } = this;
+
+    titleEl.setText('What\'s New in Relation Explorer');
+
+    // Load and display changelog
+    this.loadChangelog();
+
+    // Footer with support links
+    const footer = contentEl.createDiv('changelog-footer');
+    footer.style.cssText = `
+      margin-top: 2em;
+      padding-top: 1em;
+      border-top: 1px solid var(--background-modifier-border);
+      text-align: center;
+    `;
+
+    const supportText = footer.createEl('p', {
+      text: 'If you find Relation Explorer helpful, please consider supporting its development.'
+    });
+    supportText.style.marginBottom = '1em';
+
+    const buttonContainer = footer.createDiv();
+    buttonContainer.style.cssText = `
+      display: flex;
+      gap: var(--size-4-2);
+      justify-content: center;
+      align-items: center;
+    `;
+
+    const kofiBtn = buttonContainer.createEl('button', {
+      text: 'Support on Ko-fi',
+      cls: 'mod-cta'
+    });
+    kofiBtn.onclick = () => {
+      window.open('https://ko-fi.com/fabiankloosterman', '_blank');
+    };
+
+    const thanksBtn = buttonContainer.createEl('button', {
+      text: 'Thanks!'
+    });
+    thanksBtn.onclick = () => {
+      this.close();
+    };
+  }
+
+  private async loadChangelog(): Promise<void> {
+    const { contentEl } = this;
+
+    try {
+      // Try to load CHANGELOG.md from plugin directory
+      const adapter = this.app.vault.adapter;
+      const pluginDir = (this.app.vault as any).configDir + '/plugins/relations-obsidian';
+      const changelogPath = pluginDir + '/CHANGELOG.md';
+
+      let changelogContent: string;
+
+      // Check if we can read the file
+      if (typeof adapter.read === 'function') {
+        try {
+          changelogContent = await adapter.read(changelogPath);
+        } catch (e) {
+          // If file doesn't exist, use fallback
+          changelogContent = this.getFallbackChangelog();
+        }
+      } else {
+        changelogContent = this.getFallbackChangelog();
+      }
+
+      // Parse and render markdown
+      const changelogDiv = contentEl.createDiv('changelog-content');
+      changelogDiv.style.cssText = `
+        max-height: 60vh;
+        overflow-y: auto;
+        padding: var(--size-4-3);
+      `;
+
+      // Simple markdown rendering - you could use a more sophisticated approach
+      await this.renderMarkdown(changelogContent, changelogDiv);
+
+    } catch (e) {
+      contentEl.createEl('p', {
+        text: 'Unable to load changelog. Please visit the GitHub repository for the latest updates.'
+      });
+    }
+  }
+
+  private async renderMarkdown(markdown: string, container: HTMLElement): Promise<void> {
+    // Use Obsidian's markdown renderer
+    await (window as any).MarkdownRenderer?.renderMarkdown?.(
+      markdown,
+      container,
+      '',
+      null
+    );
+  }
+
+  private getFallbackChangelog(): string {
+    return `# Recent Updates
+
+## UI and Styling Modernization
+- Complete migration to Obsidian's design system
+- Enhanced Settings tab with native patterns
+- Collapsible subsections in parent field configuration
+- Replaced text arrows with proper Obsidian icons
+
+## Navigation Commands
+- Added basic and advanced navigation commands
+- Interactive modals for note selection
+- Multi-field support for all commands
+
+## Codeblock Features
+- Advanced filtering and display options
+- Title display with multiple modes
+- List rendering for siblings and cousins
+
+For the complete changelog, visit: https://github.com/fkloosterman/relations-obsidian/blob/main/CHANGELOG.md
+`;
+  }
+
+  onClose(): void {
+    const { contentEl } = this;
+    contentEl.empty();
   }
 }

@@ -529,10 +529,41 @@
   color: var(--text-normal);
 }
 
+.default-star-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--icon-size);
+  height: var(--icon-size);
+  color: var(--text-muted);
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.default-star-icon:hover {
+  color: var(--text-accent);
+}
+
+.default-star-icon.is-default {
+  color: var(--text-accent);
+  cursor: default;
+}
+
+.default-star-icon svg {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+}
+
 .parent-field-config-header button {
   margin: 0;
   padding: var(--size-2-2) var(--size-4-3);
   flex-shrink: 0;
+}
+
+.parent-field-config-header button.is-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .parent-field-config-body {

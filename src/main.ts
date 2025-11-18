@@ -1,4 +1,4 @@
-import { App, Plugin, PluginSettingTab, Setting, TFile, TAbstractFile, Notice, Modal, setIcon } from 'obsidian';
+import { App, Plugin, PluginSettingTab, Setting, TFile, TAbstractFile, Notice, Modal, setIcon, MarkdownRenderer } from 'obsidian';
 import { RelationGraph } from './relation-graph';
 import { RelationshipEngine } from './relationship-engine';
 import { DiagnosticSeverity } from './graph-validator';
@@ -1269,24 +1269,24 @@ class ChangelogModal extends Modal {
 
   private async renderMarkdown(markdown: string, container: HTMLElement): Promise<void> {
     try {
-      // Use Obsidian's markdown renderer properly
-      const MarkdownRenderer = (this.app as any).MarkdownRenderer || (window as any).MarkdownRenderer;
+      console.log('Rendering markdown, length:', markdown.length);
 
-      if (MarkdownRenderer && typeof MarkdownRenderer.renderMarkdown === 'function') {
-        await MarkdownRenderer.renderMarkdown(
-          markdown,
-          container,
-          '',
-          this
-        );
-      } else {
-        // Fallback: just set as text with basic formatting
-        console.log('MarkdownRenderer not available, using plain text');
-        container.setText(markdown);
-      }
+      // Use Obsidian's markdown renderer - use type assertion for modal context
+      await MarkdownRenderer.renderMarkdown(
+        markdown,
+        container,
+        '', // sourcePath
+        this as any // Modal works as Component context
+      );
+
+      console.log('Markdown rendered successfully');
     } catch (e) {
       console.error('Error rendering markdown:', e);
-      container.setText(markdown);
+      // Fallback: display as preformatted text
+      const pre = container.createEl('pre');
+      pre.style.whiteSpace = 'pre-wrap';
+      pre.style.wordWrap = 'break-word';
+      pre.setText(markdown);
     }
   }
 

@@ -761,6 +761,37 @@ class ParentRelationSettingTab extends PluginSettingTab {
   }
 
   /**
+   * Adds Ko-fi logo SVG to button element
+   */
+  private addKofiLogo(buttonEl: HTMLElement): void {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('width', '18');
+    svg.setAttribute('height', '18');
+    svg.setAttribute('viewBox', '0 0 241 194');
+    svg.setAttribute('fill', 'none');
+    svg.style.cssText = 'flex-shrink: 0;';
+
+    // Simplified Ko-fi logo paths (cup outline and heart)
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+
+    const paths = [
+      { d: 'M96.1344 193.911C61.1312 193.911 32.6597 178.256 15.9721 149.829C1.19788 124.912 -0.00585938 97.9229 -0.00585938 67.7662C-0.00585938 49.8876 5.37293 34.3215 15.5413 22.7466C24.8861 12.1157 38.1271 5.22907 52.8317 3.35378C70.2858 1.14271 91.9848 0.958984 114.545 0.958984C151.259 0.958984 161.63 1.4088 176.075 2.85328C195.29 4.76026 211.458 11.932 222.824 23.5955C234.368 35.4428 240.469 51.2624 240.469 69.3627V72.9994C240.469 103.885 219.821 129.733 191.046 136.759C188.898 141.827 186.237 146.871 183.089 151.837L183.006 151.964C172.869 167.632 149.042 193.918 103.401 193.918H96.1281L96.1344 193.911Z', fill: 'currentColor' },
+      { d: 'M15.1975 67.7674C15.1975 37.5285 33.3866 21.164 54.7559 18.4334C70.8987 16.387 90.906 16.1589 114.544 16.1589C151.372 16.1589 160.919 16.6151 174.559 17.9772C206.617 21.1576 225.255 40.937 225.255 69.3577V72.9941C225.255 99.3687 205.932 120.966 179.786 123.234C177.74 130.058 174.559 136.874 170.238 143.698C160.235 159.156 140.228 178.707 103.4 178.707H96.1264C66.1155 178.707 42.9277 165.751 29.0595 142.107C16.7814 121.422 15.1912 98.4563 15.1912 67.7674', fill: 'currentColor' },
+      { d: 'M32.2469 67.9899C32.2469 97.3168 34.0654 116.184 43.6127 133.689C54.5225 153.924 74.3018 161.653 96.8117 161.653H103.857C133.411 161.653 147.736 147.329 155.693 134.829C159.558 128.462 162.966 121.417 164.784 112.547L166.147 106.864H174.332C192.521 106.864 208.208 92.09 208.208 73.2166V69.8082C208.208 48.6669 195.024 37.5228 172.058 34.7987C159.102 33.6646 151.372 33.2084 114.538 33.2084C89.7602 33.2084 72.0272 33.4364 58.6152 35.4828C39.7483 38.2134 32.2407 48.8951 32.2407 67.9899', fill: 'currentColor' }
+    ];
+
+    paths.forEach(pathData => {
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('d', pathData.d);
+      path.setAttribute('fill', pathData.fill);
+      g.appendChild(path);
+    });
+
+    svg.appendChild(g);
+    buttonEl.prepend(svg);
+  }
+
+  /**
    * Renders what's new section with changelog.
    */
   private renderWhatsNew(containerEl: HTMLElement): void {
@@ -809,7 +840,7 @@ class ParentRelationSettingTab extends PluginSettingTab {
       })
       .addButton(button => {
         const btn = button.buttonEl;
-        setIcon(btn, 'coffee');
+        this.addKofiLogo(btn);
         btn.createSpan({ text: ' Buy me a coffee' });
         btn.addClass('kofi-button');
         button.onClick(() => {
@@ -1171,6 +1202,37 @@ class ChangelogModal extends Modal {
     super(app);
   }
 
+  /**
+   * Adds Ko-fi logo SVG to button element
+   */
+  private addKofiLogo(buttonEl: HTMLElement): void {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('width', '18');
+    svg.setAttribute('height', '18');
+    svg.setAttribute('viewBox', '0 0 241 194');
+    svg.setAttribute('fill', 'none');
+    svg.style.cssText = 'flex-shrink: 0;';
+
+    // Simplified Ko-fi logo paths
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+
+    const paths = [
+      { d: 'M96.1344 193.911C61.1312 193.911 32.6597 178.256 15.9721 149.829C1.19788 124.912 -0.00585938 97.9229 -0.00585938 67.7662C-0.00585938 49.8876 5.37293 34.3215 15.5413 22.7466C24.8861 12.1157 38.1271 5.22907 52.8317 3.35378C70.2858 1.14271 91.9848 0.958984 114.545 0.958984C151.259 0.958984 161.63 1.4088 176.075 2.85328C195.29 4.76026 211.458 11.932 222.824 23.5955C234.368 35.4428 240.469 51.2624 240.469 69.3627V72.9994C240.469 103.885 219.821 129.733 191.046 136.759C188.898 141.827 186.237 146.871 183.089 151.837L183.006 151.964C172.869 167.632 149.042 193.918 103.401 193.918H96.1281L96.1344 193.911Z', fill: 'currentColor' },
+      { d: 'M15.1975 67.7674C15.1975 37.5285 33.3866 21.164 54.7559 18.4334C70.8987 16.387 90.906 16.1589 114.544 16.1589C151.372 16.1589 160.919 16.6151 174.559 17.9772C206.617 21.1576 225.255 40.937 225.255 69.3577V72.9941C225.255 99.3687 205.932 120.966 179.786 123.234C177.74 130.058 174.559 136.874 170.238 143.698C160.235 159.156 140.228 178.707 103.4 178.707H96.1264C66.1155 178.707 42.9277 165.751 29.0595 142.107C16.7814 121.422 15.1912 98.4563 15.1912 67.7674', fill: 'currentColor' },
+      { d: 'M32.2469 67.9899C32.2469 97.3168 34.0654 116.184 43.6127 133.689C54.5225 153.924 74.3018 161.653 96.8117 161.653H103.857C133.411 161.653 147.736 147.329 155.693 134.829C159.558 128.462 162.966 121.417 164.784 112.547L166.147 106.864H174.332C192.521 106.864 208.208 92.09 208.208 73.2166V69.8082C208.208 48.6669 195.024 37.5228 172.058 34.7987C159.102 33.6646 151.372 33.2084 114.538 33.2084C89.7602 33.2084 72.0272 33.4364 58.6152 35.4828C39.7483 38.2134 32.2407 48.8951 32.2407 67.9899', fill: 'currentColor' }
+    ];
+
+    paths.forEach(pathData => {
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('d', pathData.d);
+      path.setAttribute('fill', pathData.fill);
+      g.appendChild(path);
+    });
+
+    svg.appendChild(g);
+    buttonEl.prepend(svg);
+  }
+
   onOpen(): void {
     const { contentEl, titleEl } = this;
 
@@ -1204,7 +1266,7 @@ class ChangelogModal extends Modal {
     const kofiBtn = buttonContainer.createEl('button', {
       cls: 'kofi-button'
     });
-    setIcon(kofiBtn, 'coffee');
+    this.addKofiLogo(kofiBtn);
     kofiBtn.createSpan({ text: ' Buy me a coffee' });
     kofiBtn.onclick = () => {
       window.open('https://ko-fi.com/fabiankloosterman', '_blank');

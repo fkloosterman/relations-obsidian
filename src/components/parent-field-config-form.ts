@@ -198,6 +198,9 @@ export class ParentFieldConfigForm {
     // Track collapsed state for this section (default to collapsed for cleaner UI)
     const sectionCollapsed = this.sectionCollapsedStates.get(sectionKey) ?? true;
 
+    // Get section config
+    const config = this.config[sectionKey];
+
     // Section header with collapse toggle and reorder controls
     const headerEl = sectionEl.createDiv('section-config-header');
     headerEl.style.cursor = 'pointer';
@@ -262,8 +265,6 @@ export class ParentFieldConfigForm {
     if (sectionCollapsed) {
       sectionBodyEl.addClass('is-collapsed');
     }
-
-    const config = this.config[sectionKey];
 
     // Display name
     new Setting(sectionBodyEl)

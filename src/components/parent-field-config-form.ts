@@ -208,6 +208,19 @@ export class ParentFieldConfigForm {
 
     const titleEl = headerEl.createEl('h4', { text: sectionTitle });
 
+    // Visibility toggle (eye icon)
+    const visibilityIcon = headerEl.createSpan('section-config-visibility-icon');
+    setIcon(visibilityIcon, config.visible ? 'eye' : 'eye-off');
+    visibilityIcon.setAttribute('aria-label', config.visible ? 'Hide section' : 'Show section');
+    visibilityIcon.onclick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      config.visible = !config.visible;
+      setIcon(visibilityIcon, config.visible ? 'eye' : 'eye-off');
+      visibilityIcon.setAttribute('aria-label', config.visible ? 'Hide section' : 'Show section');
+      this.onChange(this.config);
+    };
+
     // Reorder buttons container
     const reorderContainer = headerEl.createDiv('section-reorder-buttons');
 
@@ -237,8 +250,8 @@ export class ParentFieldConfigForm {
 
     // Make header clickable to toggle
     headerEl.addEventListener('click', (e) => {
-      // Don't toggle if clicking the reorder buttons
-      if (e.target === upBtn || e.target === downBtn) {
+      // Don't toggle if clicking the reorder buttons or visibility icon
+      if (e.target === upBtn || e.target === downBtn || (e.target as Element).closest('.section-config-visibility-icon')) {
         return;
       }
       this.toggleSectionCollapse(sectionKey);

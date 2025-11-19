@@ -392,6 +392,16 @@ export class RelationSidebarView extends ItemView {
 				return;
 			}
 
+		// Check if any sections will be visible
+		const hasVisibleSections = fieldConfig.roots.visible || fieldConfig.ancestors.visible ||
+			fieldConfig.descendants.visible ||
+			fieldConfig.siblings.visible;
+
+		if (!hasVisibleSections) {
+			this.showNoRelationsState();
+			return;
+		}
+
 		// Get section order (use default if not set)
 		const sectionOrder = fieldConfig.sectionOrder || ['reference', 'roots', 'ancestors', 'descendants', 'siblings'];
 
@@ -399,13 +409,13 @@ export class RelationSidebarView extends ItemView {
 		sectionOrder.forEach(sectionKey => {
 			if (sectionKey === 'reference') {
 				this.renderReferenceNote(file);
-			} else if (sectionKey === 'roots') {
+			} else if (sectionKey === 'roots' && fieldConfig.roots.visible) {
 				this.renderSection('roots', file, fieldConfig, engine, graph);
-			} else if (sectionKey === 'ancestors') {
+			} else if (sectionKey === 'ancestors' && fieldConfig.ancestors.visible) {
 				this.renderSection('ancestors', file, fieldConfig, engine, graph);
-			} else if (sectionKey === 'descendants') {
+			} else if (sectionKey === 'descendants' && fieldConfig.descendants.visible) {
 				this.renderSection('descendants', file, fieldConfig, engine, graph);
-			} else if (sectionKey === 'siblings') {
+			} else if (sectionKey === 'siblings' && fieldConfig.siblings.visible) {
 				this.renderSection('siblings', file, fieldConfig, engine, graph);
 			}
 		});
@@ -455,11 +465,6 @@ export class RelationSidebarView extends ItemView {
 		const sectionContainer = this.contentContainer.createDiv('relation-section');
 		sectionContainer.addClass(`relation-section-${sectionType}`);
 
-		// Check if section is visible
-		if (!sectionConfig.visible) {
-			sectionContainer.addClass('is-hidden');
-		}
-
 		// Check if section should be collapsed
 		const collapsedSections = this.viewState.collapsedSections[this.viewState.selectedParentField] || [];
 		const isCollapsed = sectionConfig.collapsed || collapsedSections.includes(sectionType);
@@ -474,22 +479,8 @@ export class RelationSidebarView extends ItemView {
 		const title = header.createDiv('relation-section-title');
 		title.setText(sectionConfig.displayName || sectionType);
 
-		// Add visibility toggle button (eye icon)
-		const visibilityToggle = header.createDiv('relation-section-visibility-toggle');
-		visibilityToggle.setAttribute('aria-label', sectionConfig.visible ? 'Hide section' : 'Show section');
-		setIcon(visibilityToggle, sectionConfig.visible ? 'eye' : 'eye-off');
-		visibilityToggle.addEventListener('click', (e) => {
-			e.preventDefault();
-			e.stopPropagation();
-			this.toggleSectionVisibility(sectionType);
-		});
-
-		// Make header clickable (but not the visibility toggle)
+		// Make entire header clickable
 		header.addEventListener('click', (e) => {
-			// Don't toggle collapse if clicking on visibility toggle
-			if ((e.target as Element).closest('.relation-section-visibility-toggle')) {
-				return;
-			}
 			e.preventDefault();
 			e.stopPropagation();
 			this.toggleSection(sectionType);
@@ -499,11 +490,6 @@ export class RelationSidebarView extends ItemView {
 		const content = sectionContainer.createDiv('relation-section-content');
 		if (isCollapsed) {
 			content.addClass('is-collapsed');
-		}
-
-		// If section is not visible, don't render content (just show header with eye icon)
-		if (!sectionConfig.visible) {
-			return;
 		}
 
 		// Build and render tree/list for this section
@@ -784,25 +770,6 @@ export class RelationSidebarView extends ItemView {
 			// Collapse
 			collapsedSections.push(sectionType);
 		}
-
-		// Re-render to update UI
-		this.updateView();
-	}
-
-	/**
-	 * Toggles a section's visibility.
-	 */
-	private toggleSectionVisibility(sectionType: 'roots' | 'ancestors' | 'descendants' | 'siblings'): void {
-		const fieldName = this.viewState.selectedParentField;
-		const fieldConfig = this.plugin.settings.parentFields.find(f => f.name === fieldName);
-
-		if (!fieldConfig) return;
-
-		// Toggle the visible property
-		fieldConfig[sectionType].visible = !fieldConfig[sectionType].visible;
-
-		// Save settings
-		this.plugin.saveSettings();
 
 		// Re-render to update UI
 		this.updateView();

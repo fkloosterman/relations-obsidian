@@ -342,25 +342,6 @@
   margin-bottom: 0;
 }
 
-/* Hidden Section State */
-.relation-section.is-hidden .relation-section-header {
-  opacity: 0.6;
-  background-color: var(--background-primary);
-}
-
-.relation-section.is-hidden .relation-section-header:hover {
-  opacity: 0.8;
-  background-color: var(--background-modifier-hover);
-}
-
-.relation-section.is-hidden .relation-section-toggle {
-  visibility: hidden;
-}
-
-.relation-section.is-hidden .relation-section-content {
-  display: none;
-}
-
 /* Section Header */
 .relation-section-header {
   display: flex;
@@ -400,28 +381,6 @@
   font-weight: 600;
   font-size: var(--font-ui-small);
   color: var(--text-normal);
-}
-
-.relation-section-visibility-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-muted);
-  width: var(--icon-size);
-  height: var(--icon-size);
-  flex-shrink: 0;
-  border-radius: var(--radius-s);
-  transition: background-color 0.15s ease, color 0.15s ease;
-}
-
-.relation-section-visibility-toggle:hover {
-  background-color: var(--background-modifier-hover);
-  color: var(--text-normal);
-}
-
-.relation-section-visibility-toggle svg {
-  width: var(--icon-size-sm);
-  height: var(--icon-size-sm);
 }
 
 /* Section Content */
@@ -798,6 +757,28 @@ button svg + span {
 }
 
 .section-config-collapse-icon svg {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+}
+
+.section-config-visibility-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--icon-size);
+  height: var(--icon-size);
+  color: var(--text-muted);
+  flex-shrink: 0;
+  border-radius: var(--radius-s);
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.section-config-visibility-icon:hover {
+  background-color: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.section-config-visibility-icon svg {
   width: var(--icon-size-sm);
   height: var(--icon-size-sm);
 }

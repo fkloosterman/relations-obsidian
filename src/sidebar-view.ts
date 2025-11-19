@@ -392,15 +392,15 @@ export class RelationSidebarView extends ItemView {
 				return;
 			}
 
-			// Check if any sections will be visible
-			const hasVisibleSections = fieldConfig.roots.visible || fieldConfig.ancestors.visible ||
-				fieldConfig.descendants.visible ||
-				fieldConfig.siblings.visible;
+		// Check if any sections will be visible
+		const hasVisibleSections = fieldConfig.roots.visible || fieldConfig.ancestors.visible ||
+			fieldConfig.descendants.visible ||
+			fieldConfig.siblings.visible;
 
-			if (!hasVisibleSections) {
-				this.showNoRelationsState();
-				return;
-			}
+		if (!hasVisibleSections) {
+			this.showNoRelationsState();
+			return;
+		}
 
 		// Get section order (use default if not set)
 		const sectionOrder = fieldConfig.sectionOrder || ['reference', 'roots', 'ancestors', 'descendants', 'siblings'];

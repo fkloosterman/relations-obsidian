@@ -761,6 +761,28 @@ button svg + span {
   height: var(--icon-size-sm);
 }
 
+.section-config-visibility-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--icon-size);
+  height: var(--icon-size);
+  color: var(--text-muted);
+  flex-shrink: 0;
+  border-radius: var(--radius-s);
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.section-config-visibility-icon:hover {
+  background-color: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.section-config-visibility-icon svg {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+}
+
 /* Section config body (collapsible) */
 .section-config-body {
   padding: var(--size-4-3);

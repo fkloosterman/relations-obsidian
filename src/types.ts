@@ -211,7 +211,7 @@ export const DEFAULT_PARENT_FIELD_CONFIG: ParentFieldConfig = {
     displayName: 'Root Notes',
     sortOrder: 'alphabetical',
     visible: true,
-    collapsed: false
+    collapsed: true
   },
   ancestors: {
     ...DEFAULT_SECTION_CONFIG,
@@ -229,7 +229,8 @@ export const DEFAULT_PARENT_FIELD_CONFIG: ParentFieldConfig = {
     ...DEFAULT_SECTION_CONFIG,
     displayName: 'Siblings',
     sortOrder: 'alphabetical',
-    includeSelf: false
+    includeSelf: false,
+    collapsed: true
   }
 };
 

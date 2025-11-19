@@ -834,9 +834,6 @@ class ParentRelationSettingTab extends PluginSettingTab {
   private renderDocumentationAndSupport(containerEl: HTMLElement): void {
     new Setting(containerEl)
       .setName('Support development')
-      .setHeading();
-
-    new Setting(containerEl)
       .setDesc('If you find Relation Explorer helpful, please consider supporting its development.')
       .addButton(button => {
         const btn = button.buttonEl;

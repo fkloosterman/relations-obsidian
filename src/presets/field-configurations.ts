@@ -18,7 +18,7 @@ export const PRESET_CONFIGURATIONS: Record<string, ParentFieldConfig[]> = {
       roots: {
         displayName: 'Root Notes',
         visible: true,
-        collapsed: false,
+        collapsed: true,
         sortOrder: 'alphabetical'
       },
       ancestors: {
@@ -56,7 +56,7 @@ export const PRESET_CONFIGURATIONS: Record<string, ParentFieldConfig[]> = {
       roots: {
         displayName: 'Root Notes',
         visible: true,
-        collapsed: false,
+        collapsed: true,
         sortOrder: 'alphabetical'
       },
       ancestors: {
@@ -84,11 +84,11 @@ export const PRESET_CONFIGURATIONS: Record<string, ParentFieldConfig[]> = {
     {
       name: 'category',
       displayName: 'Category',
-      sectionOrder: ['reference', 'roots', 'ancestors', 'descendants', 'siblings'],
+      sectionOrder: ['reference', 'ancestors', 'descendants', 'siblings', 'roots'],
       roots: {
         displayName: 'Root Notes',
         visible: true,
-        collapsed: false,
+        collapsed: true,
         sortOrder: 'alphabetical'
       },
       ancestors: {
@@ -107,7 +107,7 @@ export const PRESET_CONFIGURATIONS: Record<string, ParentFieldConfig[]> = {
       },
       siblings: {
         displayName: 'Same Category',
-        visible: false,
+        visible: true,
         collapsed: true,
         sortOrder: 'alphabetical',
         includeSelf: false
@@ -126,27 +126,27 @@ export const PRESET_CONFIGURATIONS: Record<string, ParentFieldConfig[]> = {
       roots: {
         displayName: 'Root Notes',
         visible: true,
-        collapsed: false,
+        collapsed: true,
         sortOrder: 'alphabetical'
       },
       ancestors: {
         displayName: 'Parent Chain',
         visible: true,
         collapsed: false,
-        maxDepth: 10,
+        maxDepth: 7,
         initialDepth: 3
       },
       descendants: {
         displayName: 'Subtopics',
         visible: true,
         collapsed: false,
-        maxDepth: 10,
+        maxDepth: 7,
         initialDepth: 2
       },
       siblings: {
         displayName: 'Related Notes',
         visible: true,
-        collapsed: false,
+        collapsed: true,
         sortOrder: 'modified',
         includeSelf: false
       }
@@ -160,11 +160,11 @@ export const PRESET_CONFIGURATIONS: Record<string, ParentFieldConfig[]> = {
     {
       name: 'parent',
       displayName: 'Parent',
-      sectionOrder: ['reference', 'roots', 'ancestors', 'descendants', 'siblings'],
+      sectionOrder: ['reference', 'ancestors', 'descendants', 'roots', 'siblings'],
       roots: {
         displayName: 'Root Notes',
         visible: true,
-        collapsed: false,
+        collapsed: true,
         sortOrder: 'alphabetical'
       },
       ancestors: {
@@ -177,7 +177,7 @@ export const PRESET_CONFIGURATIONS: Record<string, ParentFieldConfig[]> = {
       descendants: {
         displayName: 'Down',
         visible: true,
-        collapsed: true,
+        collapsed: false,
         maxDepth: 2,
         initialDepth: 1
       },
@@ -230,11 +230,11 @@ export const PRESET_CONFIGURATIONS: Record<string, ParentFieldConfig[]> = {
     {
       name: 'project',
       displayName: 'Project',
-      sectionOrder: ['reference', 'roots', 'ancestors', 'descendants', 'siblings'],
+      sectionOrder: ['reference', 'ancestors', 'descendants', 'siblings', 'roots'],
       roots: {
         displayName: 'Root Notes',
         visible: true,
-        collapsed: false,
+        collapsed: true,
         sortOrder: 'alphabetical'
       },
       ancestors: {
@@ -262,11 +262,11 @@ export const PRESET_CONFIGURATIONS: Record<string, ParentFieldConfig[]> = {
     {
       name: 'topic',
       displayName: 'Topic',
-      sectionOrder: ['reference', 'roots', 'ancestors', 'descendants', 'siblings'],
+      sectionOrder: ['reference', 'ancestors', 'descendants', 'siblings', 'roots'],
       roots: {
         displayName: 'Root Notes',
         visible: true,
-        collapsed: false,
+        collapsed: true,
         sortOrder: 'alphabetical'
       },
       ancestors: {
@@ -285,7 +285,7 @@ export const PRESET_CONFIGURATIONS: Record<string, ParentFieldConfig[]> = {
       },
       siblings: {
         displayName: 'Related Topics',
-        visible: false,
+        visible: true,
         collapsed: true,
         sortOrder: 'alphabetical',
         includeSelf: false
